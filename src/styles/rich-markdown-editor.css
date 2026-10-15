@@ -1,0 +1,679 @@
+import 'katex/dist/katex.min.css'
+
+/* ── Global Cursor Pointer Rule (User Global Rule Compliance) ── */
+button,
+a,
+select,
+summary,
+label,
+[role='button'],
+[role='option'],
+[role='tab'],
+[role='menuitem'],
+input[type='checkbox'],
+input[type='radio'],
+input[type='file'],
+.cursor-pointer {
+  cursor: pointer !important;
+}
+
+[role='separator'][aria-orientation='vertical'],
+.cursor-ew-resize {
+  cursor: ew-resize !important;
+}
+
+/* ── Orca ADE Rich Markdown Editor Styles ─────────────────────── */
+
+.rich-markdown-editor-shell {
+  position: relative;
+  display: flex;
+  min-height: 0;
+  height: 100%;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  background: var(--editor-surface);
+}
+
+.rich-markdown-editor-layout {
+  position: relative;
+  display: flex;
+  min-height: 0;
+  height: 100%;
+  min-width: 0;
+  flex: 1;
+  background: var(--editor-surface);
+}
+
+.rich-markdown-editor-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 40px;
+  box-sizing: border-box;
+  padding: 6px 16px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+  background: color-mix(in srgb, var(--background) 88%, transparent);
+}
+
+.rich-markdown-toolbar-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 7px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.rich-markdown-toolbar-separator {
+  width: 1px;
+  height: 18px;
+  background: color-mix(in srgb, var(--border) 72%, transparent);
+  flex-shrink: 0;
+}
+
+.rich-markdown-toolbar-button:hover,
+.rich-markdown-toolbar-button.is-active {
+  border-color: color-mix(in srgb, var(--primary) 55%, var(--border));
+  background: color-mix(in srgb, var(--primary) 18%, var(--accent));
+  color: var(--foreground);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--primary) 45%, transparent);
+}
+
+.rich-markdown-editor {
+  min-height: 100%;
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 16px 40px 120px;
+  font-size: 15px;
+  line-height: 1.72;
+  outline: none;
+  user-select: text;
+  caret-color: var(--primary);
+}
+
+.rich-markdown-editor.has-custom-thick-caret {
+  caret-color: transparent;
+}
+
+@keyframes rys-caret-blink {
+  0%, 46% {
+    opacity: 1;
+  }
+  52%, 96% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.rys-thick-caret {
+  position: absolute;
+  pointer-events: none;
+  z-index: 30;
+  width: 2.6px;
+  border-radius: 999px;
+  background: var(--primary);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--primary) 50%, transparent);
+  animation: rys-caret-blink 1.06s infinite ease-in-out;
+  transition: top 35ms linear, left 35ms linear, height 35ms linear;
+}
+
+.rys-thick-caret.is-typing {
+  animation: none;
+  opacity: 1;
+}
+
+.rich-markdown-editor p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  color: var(--muted-foreground);
+}
+
+.rich-markdown-editor summary.is-empty::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  color: color-mix(in srgb, var(--muted-foreground) 75%, transparent);
+}
+
+.rich-markdown-editor h1,
+.rich-markdown-editor h2,
+.rich-markdown-editor h3,
+.rich-markdown-editor h4,
+.rich-markdown-editor h5,
+.rich-markdown-editor h6 {
+  margin-top: 1.4em;
+  margin-bottom: 0.45em;
+  font-weight: 650;
+  line-height: 1.28;
+}
+
+.rich-markdown-editor > :first-child {
+  margin-top: 0;
+}
+
+.rich-markdown-editor h1 {
+  font-size: 1.9em;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+.rich-markdown-editor h2 {
+  font-size: 1.42em;
+}
+
+.rich-markdown-editor h3 {
+  font-size: 1.18em;
+}
+
+.rich-markdown-editor h4 {
+  font-size: 1.02em;
+}
+
+.rich-markdown-editor h5 {
+  color: var(--muted-foreground);
+  font-size: 0.92em;
+}
+
+.rich-markdown-editor p,
+.rich-markdown-editor ul,
+.rich-markdown-editor ol,
+.rich-markdown-editor blockquote {
+  margin: 0.72em 0;
+}
+
+.rich-markdown-editor-shell .rich-markdown-editor p {
+  white-space: normal;
+}
+
+/* ── KaTeX Math Rendering ── */
+.rich-markdown-editor .tiptap-mathematics-render {
+  border-radius: 6px;
+}
+
+.rich-markdown-editor .tiptap-mathematics-render[data-type='inline-math'] {
+  padding: 0 3px;
+}
+
+.rich-markdown-editor .tiptap-mathematics-render[data-type='block-math'] {
+  margin: 1em 0;
+  padding: 0.85em 1.2em;
+  overflow-x: auto;
+  border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+  background: color-mix(in srgb, var(--muted) 42%, transparent);
+}
+
+/* ── Lists & Interactive Checklists ── */
+.rich-markdown-editor ul,
+.rich-markdown-editor ol {
+  padding-left: 1.5em;
+}
+
+.rich-markdown-editor ul {
+  list-style: disc;
+}
+
+.rich-markdown-editor ol {
+  list-style: decimal;
+}
+
+.rich-markdown-editor li > p {
+  margin: 0;
+}
+
+.rich-markdown-editor li {
+  margin: 0.2em 0;
+}
+
+.rich-markdown-editor ul[data-type='taskList'] {
+  padding-left: 0;
+  list-style: none;
+}
+
+.rich-markdown-editor ul[data-type='taskList'] ul[data-type='taskList'] {
+  padding-left: 0.85em;
+}
+
+.rich-markdown-editor ul[data-type='taskList'] > li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.rich-markdown-editor ul[data-type='taskList'] > li > label {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  height: 1.6em;
+  cursor: pointer;
+  user-select: none;
+}
+
+.rich-markdown-editor ul[data-type='taskList'] > li > label input[type='checkbox'] {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid color-mix(in srgb, var(--foreground) 50%, transparent);
+  border-radius: 5px;
+  background: transparent;
+  cursor: pointer;
+  position: relative;
+  flex-shrink: 0;
+  transition: all 120ms ease;
+}
+
+.rich-markdown-editor ul[data-type='taskList'] > li > label input[type='checkbox']:checked {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.rich-markdown-editor ul[data-type='taskList'] > li > label input[type='checkbox']:checked::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 1px;
+  width: 5px;
+  height: 9px;
+  border: solid var(--primary-foreground);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.rich-markdown-editor ul[data-type='taskList'] > li > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.rich-markdown-editor ul[data-type='taskList'] > li > div > p {
+  margin: 0;
+}
+
+.rich-markdown-editor ul[data-type='taskList'] > li[data-checked='true'] > div {
+  text-decoration: line-through;
+  color: var(--muted-foreground);
+}
+
+/* ── Collapsible Details / Toggle Blocks ── */
+.rich-markdown-editor .orca-details {
+  margin: 0.85em 0;
+  border-left: 2px solid color-mix(in srgb, var(--primary) 45%, var(--border));
+  border-radius: 4px;
+}
+
+.rich-markdown-editor details.orca-details,
+.rich-markdown-editor .orca-details[data-type='details'] {
+  position: relative;
+  padding-left: 1.65em;
+}
+
+.rich-markdown-editor details.orca-details > summary,
+.rich-markdown-editor .orca-details[data-type='details'] summary {
+  display: block;
+  list-style: none;
+  min-height: 1.6em;
+  cursor: pointer;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.rich-markdown-editor details.orca-details > summary::-webkit-details-marker,
+.rich-markdown-editor .orca-details[data-type='details'] summary::-webkit-details-marker {
+  display: none;
+}
+
+.rich-markdown-editor .orca-details[data-type='details'] > button {
+  position: absolute;
+  top: 0;
+  left: 0.15em;
+  display: flex;
+  width: 1.2em;
+  height: 1.6em;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--primary);
+  cursor: pointer;
+}
+
+.rich-markdown-editor .orca-details[data-type='details'] > button::before {
+  content: '\203A';
+  font-size: 1.25em;
+  line-height: 1;
+  transition: transform 120ms ease;
+}
+
+.rich-markdown-editor .orca-details[data-type='details'].is-open > button::before {
+  transform: rotate(90deg);
+}
+
+.rich-markdown-editor details.orca-details[data-orca-toggle='heading-1'] > summary,
+.rich-markdown-editor .orca-details[data-type='details'][data-orca-toggle='heading-1'] summary {
+  font-size: 1.85em;
+  font-weight: 700;
+}
+
+.rich-markdown-editor details.orca-details[data-orca-toggle='heading-2'] > summary,
+.rich-markdown-editor .orca-details[data-type='details'][data-orca-toggle='heading-2'] summary {
+  font-size: 1.4em;
+}
+
+.rich-markdown-editor details.orca-details[data-orca-toggle='heading-3'] > summary,
+.rich-markdown-editor .orca-details[data-type='details'][data-orca-toggle='heading-3'] summary {
+  font-size: 1.15em;
+}
+
+/* ── Blockquote & Tables ── */
+.rich-markdown-editor blockquote {
+  padding: 0.55em 1.1em;
+  border-left: 3px solid var(--primary);
+  border-radius: 0 6px 6px 0;
+  color: var(--muted-foreground);
+  background: color-mix(in srgb, var(--primary) 6%, transparent);
+}
+
+.rich-markdown-editor table {
+  width: 100%;
+  margin: 1em 0;
+  border-collapse: collapse;
+  font-size: 0.94em;
+  table-layout: auto;
+}
+
+.rich-markdown-editor th,
+.rich-markdown-editor td {
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: break-word;
+}
+
+.rich-markdown-editor th {
+  font-weight: 600;
+  background: color-mix(in srgb, var(--foreground) 5%, transparent);
+}
+
+.rich-markdown-editor tr:nth-child(odd) td {
+  background: color-mix(in srgb, var(--foreground) 1.8%, transparent);
+}
+
+/* ── Code Blocks & Syntax Highlighting (Lowlight) ── */
+.rich-markdown-editor code {
+  padding: 0.18em 0.42em;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--foreground) 8%, transparent);
+  font-size: 0.87em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.rich-markdown-code-block-wrapper {
+  position: relative;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--foreground) 5%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 90%, transparent);
+  margin: 0.85em 0;
+}
+
+.rich-markdown-code-block-lang {
+  position: absolute;
+  top: 7px;
+  right: 8px;
+  z-index: 2;
+  padding: 2px 6px;
+  border-radius: 5px;
+  border: 1px solid color-mix(in srgb, var(--foreground) 12%, transparent);
+  background: color-mix(in srgb, var(--background) 85%, transparent);
+  color: var(--muted-foreground);
+  font-size: 11px;
+  font-family: ui-monospace, monospace;
+  cursor: pointer;
+}
+
+.rich-markdown-code-block-wrapper .code-block-copy-btn {
+  position: absolute;
+  top: 7px;
+  right: 110px;
+  z-index: 2;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  background: color-mix(in srgb, var(--background) 80%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  border-radius: 5px;
+  padding: 3px 6px;
+  cursor: pointer;
+  color: var(--muted-foreground);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rich-markdown-code-block-wrapper:hover .code-block-copy-btn {
+  opacity: 1;
+}
+
+.rich-markdown-code-block-wrapper .code-block-copy-btn:hover {
+  background: var(--accent);
+  color: var(--foreground);
+}
+
+.mermaid-preview {
+  padding: 14px 18px;
+  border-top: 1px solid color-mix(in srgb, var(--foreground) 10%, transparent);
+}
+
+.rich-markdown-editor pre {
+  padding: 16px 18px;
+  border-radius: 10px;
+  overflow-x: auto;
+  line-height: 1.55;
+  background: transparent;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 13px;
+}
+
+.rich-markdown-editor pre code {
+  padding: 0;
+  background: transparent;
+}
+
+/* Light theme highlight.js tokens */
+.rich-markdown-code-block-wrapper .hljs-keyword { color: #cf222e; }
+.rich-markdown-code-block-wrapper .hljs-string { color: #0a3069; }
+.rich-markdown-code-block-wrapper .hljs-number { color: #0550ae; }
+.rich-markdown-code-block-wrapper .hljs-comment { color: #6e7781; font-style: italic; }
+.rich-markdown-code-block-wrapper .hljs-function,
+.rich-markdown-code-block-wrapper .hljs-title { color: #8250df; }
+.rich-markdown-code-block-wrapper .hljs-built_in,
+.rich-markdown-code-block-wrapper .hljs-type,
+.rich-markdown-code-block-wrapper .hljs-attr,
+.rich-markdown-code-block-wrapper .hljs-property { color: #0550ae; }
+.rich-markdown-code-block-wrapper .hljs-variable,
+.rich-markdown-code-block-wrapper .hljs-params { color: #953800; }
+
+/* Dark theme highlight.js tokens */
+.dark .rich-markdown-code-block-wrapper .hljs-keyword { color: #ff7b72; }
+.dark .rich-markdown-code-block-wrapper .hljs-string { color: #a5d6ff; }
+.dark .rich-markdown-code-block-wrapper .hljs-number { color: #79c0ff; }
+.dark .rich-markdown-code-block-wrapper .hljs-comment { color: #8b949e; font-style: italic; }
+.dark .rich-markdown-code-block-wrapper .hljs-function,
+.dark .rich-markdown-code-block-wrapper .hljs-title { color: #d2a8ff; }
+.dark .rich-markdown-code-block-wrapper .hljs-built_in,
+.dark .rich-markdown-code-block-wrapper .hljs-type,
+.dark .rich-markdown-code-block-wrapper .hljs-attr,
+.dark .rich-markdown-code-block-wrapper .hljs-property { color: #79c0ff; }
+.dark .rich-markdown-code-block-wrapper .hljs-variable,
+.dark .rich-markdown-code-block-wrapper .hljs-params { color: #ffa657; }
+
+.rich-markdown-editor hr {
+  margin: 1.5em 0;
+  border: none;
+  border-top: 1px solid var(--border);
+}
+
+.rich-markdown-editor a {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.rich-markdown-editor img {
+  max-width: 100%;
+  border-radius: 8px;
+  margin: 0.5em 0;
+}
+
+/* ── Slash Command Menu & Link Bubble ── */
+.rich-markdown-slash-menu {
+  position: absolute;
+  z-index: 40;
+  display: flex;
+  width: min(300px, calc(100% - 24px));
+  max-height: 360px;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--popover);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  color: var(--popover-foreground);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.32);
+}
+
+.rich-markdown-slash-search {
+  display: flex;
+  min-height: 36px;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid var(--border);
+  padding: 0 10px;
+  color: var(--muted-foreground);
+}
+
+.rich-markdown-slash-search input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--popover-foreground);
+  font-size: 12.5px;
+  outline: none;
+}
+
+.rich-markdown-slash-results {
+  overflow-y: auto;
+  padding-bottom: 4px;
+}
+
+.rich-markdown-slash-section {
+  padding: 8px 12px 4px;
+  color: var(--muted-foreground);
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.rich-markdown-slash-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 6px 12px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.rich-markdown-slash-item:hover,
+.rich-markdown-slash-item.is-active {
+  background: color-mix(in srgb, var(--primary) 18%, var(--accent));
+}
+
+.rich-markdown-slash-empty {
+  padding: 16px 12px;
+  color: var(--muted-foreground);
+  font-size: 12.5px;
+  text-align: center;
+}
+
+.rich-markdown-slash-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--foreground) 7%, transparent);
+  color: var(--primary);
+}
+
+.rich-markdown-link-bubble {
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--popover);
+  backdrop-filter: blur(22px) saturate(180%);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+}
+
+.rich-markdown-link-url {
+  padding: 2px 6px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: ui-monospace, monospace;
+}
+
+.rich-markdown-link-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted-foreground);
+}
+
+.rich-markdown-link-button:hover {
+  background: var(--accent);
+  color: var(--foreground);
+}
+
+.rich-markdown-link-input {
+  font-size: 12.5px;
+  width: 240px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--background);
+  color: var(--foreground);
+  outline: none;
+  font-family: ui-monospace, monospace;
+}

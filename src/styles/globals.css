@@ -1,0 +1,192 @@
+@import "tailwindcss";
+@import "./rich-markdown-editor.css";
+
+:root {
+  --background: #f5f5f7;
+  --foreground: #18181b;
+  --card: #ededf0;
+  --card-foreground: #18181b;
+  --popover: rgba(255, 255, 255, 0.86);
+  --popover-foreground: #18181b;
+  --primary: #0a84ff;
+  --primary-hover: #0070e0;
+  --primary-foreground: #ffffff;
+  --secondary: #e8e8ed;
+  --secondary-foreground: #18181b;
+  --muted: #e6e6eb;
+  --muted-foreground: #6e6e73;
+  --accent: rgba(0, 0, 0, 0.06);
+  --accent-foreground: #18181b;
+  --border: rgba(0, 0, 0, 0.1);
+  --ring: var(--primary);
+  --sidebar: rgba(240, 240, 244, 0.72);
+  --sidebar-foreground: #1d1d1f;
+  --editor-surface: rgba(255, 255, 255, 0.92);
+}
+
+.dark {
+  --background: #1a1a1c;
+  --foreground: #f4f4f5;
+  --card: #212124;
+  --card-foreground: #f4f4f5;
+  --popover: rgba(38, 38, 42, 0.86);
+  --popover-foreground: #f4f4f5;
+  --primary: #0a84ff;
+  --primary-hover: #2994ff;
+  --primary-foreground: #ffffff;
+  --secondary: #2c2c30;
+  --secondary-foreground: #f4f4f5;
+  --muted: #2a2a2e;
+  --muted-foreground: #9ca3af;
+  --accent: rgba(255, 255, 255, 0.08);
+  --accent-foreground: #f4f4f5;
+  --border: rgba(255, 255, 255, 0.09);
+  --ring: var(--primary);
+  --sidebar: rgba(32, 32, 35, 0.65);
+  --sidebar-foreground: #e5e5ea;
+  --editor-surface: rgba(29, 29, 31, 0.94);
+}
+
+/* Dynamic User Accent Color: Apple Notes Blue vs Classic Yellow */
+:root[data-accent="blue"],
+.dark[data-accent="blue"] {
+  --primary: #0a84ff;
+  --primary-hover: #2190ff;
+  --primary-foreground: #ffffff;
+  --ring: #0a84ff;
+}
+
+:root[data-accent="yellow"],
+.dark[data-accent="yellow"] {
+  --primary: #eab308;
+  --primary-hover: #facc15;
+  --primary-foreground: #18181b;
+  --ring: #eab308;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-editor-surface: var(--editor-surface);
+}
+
+::selection {
+  background: color-mix(in srgb, var(--primary) 32%, transparent);
+}
+
+/* macOS Apple Notes Frosted Glass Vibrancy */
+.rys-app-backdrop {
+  background:
+    radial-gradient(circle at 8% 18%, color-mix(in srgb, var(--primary) 14%, transparent), transparent 44%),
+    radial-gradient(circle at 22% 78%, rgba(251, 191, 36, 0.08), transparent 48%),
+    var(--background);
+}
+
+.rys-glass-sidebar {
+  background: linear-gradient(
+    165deg,
+    color-mix(in srgb, var(--sidebar) 84%, rgba(255, 255, 255, 0.06)),
+    color-mix(in srgb, var(--sidebar) 92%, rgba(0, 0, 0, 0.12))
+  );
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  box-shadow: inset -1px 0 0 var(--border);
+}
+
+.rys-glass-notelist {
+  background: color-mix(in srgb, var(--card) 82%, transparent);
+  backdrop-filter: blur(22px) saturate(160%);
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
+}
+
+.rys-glass-header {
+  background: color-mix(in srgb, var(--editor-surface) 78%, transparent);
+  backdrop-filter: blur(20px) saturate(170%);
+  -webkit-backdrop-filter: blur(20px) saturate(170%);
+}
+
+.rys-glass-popover {
+  background: var(--popover);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+}
+
+/* Efeito luminoso estático (mesmo brilho do cursor gordinho, sem piscar) nos botões da aplicação */
+.bg-primary {
+  box-shadow:
+    0 0 10px color-mix(in srgb, var(--primary) 48%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+button:not(:disabled) {
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease,
+    box-shadow 150ms ease,
+    transform 120ms ease;
+}
+
+button:hover:not(:disabled) {
+  box-shadow: 0 0 8px color-mix(in srgb, var(--primary) 42%, transparent);
+}
+
+button.bg-primary:hover:not(:disabled) {
+  box-shadow:
+    0 0 14px color-mix(in srgb, var(--primary) 65%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+
+/* Custom sleek scrollbars */
+.scrollbar-sleek::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scrollbar-sleek::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-sleek::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--muted-foreground) 30%, transparent);
+  border-radius: 9999px;
+}
+
+.scrollbar-sleek::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--muted-foreground) 55%, transparent);
+}
+
+@media print {
+  body {
+    overflow: visible !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  aside,
+  section,
+  header,
+  .rich-markdown-editor-toolbar,
+  .rys-thick-caret {
+    display: none !important;
+  }
+  .rich-markdown-editor {
+    padding: 0 !important;
+    max-width: 100% !important;
+  }
+}
