@@ -27,6 +27,10 @@ import { insertCodeBlock, insertToggle } from './rich-markdown-slash-commands'
 
 type RichMarkdownToolbarProps = {
   editor: Editor | null
+  zoomPercent: number
+  onZoomOut: () => void
+  onZoomIn: () => void
+  onZoomReset: () => void
   onToggleLink: () => void
   onImagePick: () => void
 }
@@ -65,6 +69,10 @@ function Separator() {
 
 export function RichMarkdownToolbar({
   editor,
+  zoomPercent,
+  onZoomOut,
+  onZoomIn,
+  onZoomReset,
   onToggleLink,
   onImagePick
 }: RichMarkdownToolbarProps): React.JSX.Element {
@@ -281,6 +289,33 @@ export function RichMarkdownToolbar({
             </div>
           </>
         )}
+      </div>
+
+      <Separator />
+
+      {/* Controles de Zoom da Nota (A- / 100% / A+) no fim da barra */}
+      <div className="inline-flex items-center gap-1">
+        <ToolbarBtn
+          active={false}
+          label="Diminuir tamanho da letra (Ctrl + -)"
+          onClick={onZoomOut}
+        >
+          <span className="text-[11px] font-bold tracking-tight">A−</span>
+        </ToolbarBtn>
+        <ToolbarBtn
+          active={zoomPercent !== 100}
+          label={`Zoom da nota: ${zoomPercent}% (Clique para redefinir para 100%)`}
+          onClick={onZoomReset}
+        >
+          <span className="text-[11px] font-mono tabular-nums">{zoomPercent}%</span>
+        </ToolbarBtn>
+        <ToolbarBtn
+          active={false}
+          label="Aumentar tamanho da letra (Ctrl + +)"
+          onClick={onZoomIn}
+        >
+          <span className="text-[12px] font-bold tracking-tight">A+</span>
+        </ToolbarBtn>
       </div>
     </div>
   )

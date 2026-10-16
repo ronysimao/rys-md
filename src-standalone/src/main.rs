@@ -727,6 +727,11 @@ win = Gtk.Window(title='Rys MD')
 win.set_default_size(1360, 860)
 win.set_position(Gtk.WindowPosition.CENTER)
 win.set_decorated(False)
+win.set_app_paintable(True)
+screen = win.get_screen()
+visual = screen.get_rgba_visual()
+if visual is not None and screen.is_composited():
+    win.set_visual(visual)
 
 for icon_path in [
     '/usr/share/icons/hicolor/128x128/apps/rys-md.png',
@@ -761,6 +766,7 @@ script = WebKit2.UserScript.new(
 ucm.add_script(script)
 
 wv = WebKit2.WebView.new_with_context(context)
+wv.set_background_color(Gdk.RGBA(0, 0, 0, 0))
 settings = wv.get_settings()
 settings.set_enable_javascript(True)
 settings.set_javascript_can_access_clipboard(True)

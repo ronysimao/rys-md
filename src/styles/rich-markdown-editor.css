@@ -92,7 +92,7 @@ input[type='file'],
   max-width: 860px;
   margin: 0 auto;
   padding: 16px 40px 120px;
-  font-size: 15px;
+  font-size: calc(15px * var(--rys-editor-zoom, 1));
   line-height: 1.72;
   outline: none;
   user-select: text;

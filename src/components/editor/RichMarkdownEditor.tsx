@@ -86,6 +86,10 @@ export function RichMarkdownEditor({
   const [isEditingLink, setIsEditingLink] = useState(false)
   const [thickCaret, setThickCaret] = useState<ThickCaretState | null>(null)
   const [isTyping, setIsTyping] = useState(false)
+  const [zoomPercent, setZoomPercent] = useState<number>(() => {
+    const saved = Number(localStorage.getItem('rys-md-editor-zoom'))
+    return Number.isFinite(saved) && saved >= 70 && saved <= 200 ? saved : 100
+  })
 
   const slashMenuRef = useRef<SlashMenuState | null>(null)
   slashMenuRef.current = slashMenu
@@ -128,7 +132,7 @@ export function RichMarkdownEditor({
     try {
       const coords = ed.view.coordsAtPos(selection.from)
       const rect = container.getBoundingClientRect()
-      const rawHeight = Math.max(18, Math.min(38, coords.bottom - coords.top))
+      const rawHeight = Math.max(16, Math.min(64, coords.bottom - coords.top))
       const top = coords.top - rect.top + container.scrollTop
       const left = coords.left - rect.left + container.scrollLeft
       setThickCaret({
@@ -140,6 +144,42 @@ export function RichMarkdownEditor({
       setThickCaret(null)
     }
   }, [])
+
+  const applyZoom = useCallback(
+    (updater: (prev: number) => number) => {
+      setZoomPercent((prev) => {
+        const next = Math.max(70, Math.min(200, updater(prev)))
+        localStorage.setItem('rys-md-editor-zoom', String(next))
+        window.requestAnimationFrame(() => {
+          updateThickCaret(editorRef.current)
+        })
+        return next
+      })
+    },
+    [updateThickCaret]
+  )
+
+  const handleZoomOut = useCallback(() => applyZoom((z) => z - 10), [applyZoom])
+  const handleZoomIn = useCallback(() => applyZoom((z) => z + 10), [applyZoom])
+  const handleZoomReset = useCallback(() => applyZoom(() => 100), [applyZoom])
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return
+      if (e.key === '=' || e.key === '+') {
+        e.preventDefault()
+        handleZoomIn()
+      } else if (e.key === '-') {
+        e.preventDefault()
+        handleZoomOut()
+      } else if (e.key === '0') {
+        e.preventDefault()
+        handleZoomReset()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [handleZoomIn, handleZoomOut, handleZoomReset])
 
   const markTypingPulse = useCallback(() => {
     setIsTyping(true)
@@ -516,7 +556,8 @@ export function RichMarkdownEditor({
               highlightActiveLine: true,
               bracketMatching: true
             }}
-            className="h-full font-mono text-[13.5px]"
+            className="h-full font-mono"
+            style={{ fontSize: `${13.5 * (zoomPercent / 100)}px` }}
           />
         </div>
       </div>
@@ -525,10 +566,22 @@ export function RichMarkdownEditor({
 
   return (
     <div className="rich-markdown-editor-layout">
-      <div ref={rootRef} className="rich-markdown-editor-shell">
+      <div
+        ref={rootRef}
+        className="rich-markdown-editor-shell"
+        style={
+          {
+            '--rys-editor-zoom': String(zoomPercent / 100)
+          } as React.CSSProperties
+        }
+      >
         {!readOnly && (
           <RichMarkdownToolbar
             editor={editor}
+            zoomPercent={zoomPercent}
+            onZoomOut={handleZoomOut}
+            onZoomIn={handleZoomIn}
+            onZoomReset={handleZoomReset}
             onToggleLink={handleToggleLink}
             onImagePick={triggerImagePick}
           />

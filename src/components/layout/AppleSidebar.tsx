@@ -201,9 +201,9 @@ export function AppleSidebar({
 
           <div className="flex items-center gap-1.5">
             <img
-              src="/favicon.ico?v=2"
+              src="/icon.png?v=3"
               alt="Rys MD Icon"
-              className="size-5 rounded-sm object-contain drop-shadow-xs"
+              className="size-5 rounded-[4px] object-contain drop-shadow-xs"
             />
             <img
               src="/Texto_Rys_MD.png?v=2"
