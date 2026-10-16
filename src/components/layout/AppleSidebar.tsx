@@ -14,7 +14,10 @@ import {
   PlusCircle,
   PanelLeft,
   Minus,
-  Maximize2
+  Maximize2,
+  ChevronUp,
+  ChevronDown,
+  GripVertical
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { AccentColor, NoteItem, SidebarFilter } from '@/types/notes'
@@ -33,6 +36,7 @@ interface AppleSidebarProps {
   onSelectFilter: (filter: SidebarFilter) => void
   onCreateFolder: (folderPath: string) => void
   onDeleteFolder: (folderPath: string) => void
+  onReorderFolders: (nextOrder: string[]) => void
   onMoveNoteToFolder: (noteRelativePath: string, targetFolder: string) => void
   onTrashNote: (noteRelativePath: string) => void
   onToggleTheme: () => void
@@ -151,6 +155,7 @@ export function AppleSidebar({
   onSelectFilter,
   onCreateFolder,
   onDeleteFolder,
+  onReorderFolders,
   onMoveNoteToFolder,
   onTrashNote,
   onToggleTheme,
@@ -160,6 +165,35 @@ export function AppleSidebar({
   const [creatingFolder, setCreatingFolder] = useState(false)
   const [newFolderName, setNewFolderName] = useState('')
   const [dragOverTarget, setDragOverTarget] = useState<string | null>(null)
+  const [draggingFolder, setDraggingFolder] = useState<string | null>(null)
+  const [folderDropIndicator, setFolderDropIndicator] = useState<{
+    folderPath: string
+    position: 'before' | 'after'
+  } | null>(null)
+
+  const moveFolderToTarget = (
+    sourceFolder: string,
+    targetFolder: string,
+    position: 'before' | 'after'
+  ) => {
+    if (sourceFolder === targetFolder) return
+    const next = folders.filter((f) => f !== sourceFolder)
+    const targetIdx = next.indexOf(targetFolder)
+    if (targetIdx === -1) return
+    const insertIdx = position === 'before' ? targetIdx : targetIdx + 1
+    next.splice(insertIdx, 0, sourceFolder)
+    onReorderFolders(next)
+  }
+
+  const moveFolderByOffset = (folderPath: string, offset: -1 | 1) => {
+    const idx = folders.indexOf(folderPath)
+    const targetIdx = idx + offset
+    if (idx === -1 || targetIdx < 0 || targetIdx >= folders.length) return
+    const next = [...folders]
+    const [removed] = next.splice(idx, 1)
+    next.splice(targetIdx, 0, removed)
+    onReorderFolders(next)
+  }
 
   const activeNotes = notes.filter((n) => !n.trashed)
   const pinnedCount = activeNotes.filter((n) => n.pinned).length
@@ -388,7 +422,7 @@ export function AppleSidebar({
                 Nenhuma pasta criada
               </div>
             ) : (
-              folders.map((folderPath) => {
+              folders.map((folderPath, idx) => {
                 const isSelected =
                   activeFilter.kind === 'folder' &&
                   activeFilter.folderPath === folderPath
@@ -398,18 +432,63 @@ export function AppleSidebar({
                 ).length
                 const depth = folderPath.split('/').length - 1
                 const displayName = folderPath.split('/').pop() || folderPath
+                const isDropBefore =
+                  folderDropIndicator?.folderPath === folderPath &&
+                  folderDropIndicator.position === 'before'
+                const isDropAfter =
+                  folderDropIndicator?.folderPath === folderPath &&
+                  folderDropIndicator.position === 'after'
 
                 return (
                   <div
                     key={folderPath}
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.effectAllowed = 'move'
+                      e.dataTransfer.setData('text/rys-folder-path', folderPath)
+                      setDraggingFolder(folderPath)
+                    }}
+                    onDragEnd={() => {
+                      setDraggingFolder(null)
+                      setFolderDropIndicator(null)
+                      setDragOverTarget(null)
+                    }}
                     onDragOver={(e) => {
                       e.preventDefault()
-                      setDragOverTarget(folderPath)
+                      if (
+                        draggingFolder ||
+                        e.dataTransfer.types.includes('text/rys-folder-path')
+                      ) {
+                        const rect = e.currentTarget.getBoundingClientRect()
+                        const pos =
+                          e.clientY < rect.top + rect.height / 2 ? 'before' : 'after'
+                        setFolderDropIndicator({ folderPath, position: pos })
+                        setDragOverTarget(null)
+                      } else {
+                        setDragOverTarget(folderPath)
+                        setFolderDropIndicator(null)
+                      }
                     }}
-                    onDragLeave={() => setDragOverTarget(null)}
+                    onDragLeave={() => {
+                      setDragOverTarget(null)
+                      setFolderDropIndicator((prev) =>
+                        prev?.folderPath === folderPath ? null : prev
+                      )
+                    }}
                     onDrop={(e) => {
                       e.preventDefault()
+                      const draggedFolder =
+                        draggingFolder || e.dataTransfer.getData('text/rys-folder-path')
+                      if (draggedFolder) {
+                        const pos = folderDropIndicator?.position ?? 'after'
+                        moveFolderToTarget(draggedFolder, folderPath, pos)
+                        setDraggingFolder(null)
+                        setFolderDropIndicator(null)
+                        setDragOverTarget(null)
+                        return
+                      }
                       setDragOverTarget(null)
+                      setFolderDropIndicator(null)
                       const relPath = e.dataTransfer.getData('text/rys-note-path')
                       if (relPath) onMoveNoteToFolder(relPath, folderPath)
                     }}
@@ -417,11 +496,14 @@ export function AppleSidebar({
                       depth > 0 ? { paddingLeft: `${10 + depth * 12}px` } : undefined
                     }
                     className={cn(
-                      'group flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-[13px] font-medium transition-colors cursor-pointer',
+                      'group relative flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-[13px] font-medium transition-all cursor-pointer',
                       isSelected
                         ? 'bg-primary text-primary-foreground font-semibold shadow-xs'
                         : 'hover:bg-accent text-foreground',
-                      dragOverTarget === folderPath && 'ring-2 ring-primary'
+                      dragOverTarget === folderPath && 'ring-2 ring-primary',
+                      draggingFolder === folderPath && 'opacity-50',
+                      isDropBefore && 'border-t-2 border-primary',
+                      isDropAfter && 'border-b-2 border-primary'
                     )}
                     onClick={() => onSelectFilter({ kind: 'folder', folderPath })}
                   >
@@ -433,7 +515,51 @@ export function AppleSidebar({
                       )}
                       <span className="truncate">{displayName}</span>
                     </span>
-                    <span className="flex items-center gap-1">
+                    <span className="flex items-center gap-0.5">
+                      {folders.length > 1 && (
+                        <>
+                          <GripVertical
+                            className={cn(
+                              'size-3 shrink-0 opacity-0 group-hover:opacity-60 transition-opacity mr-0.5',
+                              isSelected ? 'text-primary-foreground' : 'text-muted-foreground'
+                            )}
+                          />
+                          <button
+                            type="button"
+                            title="Mover pasta para cima"
+                            disabled={idx === 0}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              moveFolderByOffset(folderPath, -1)
+                            }}
+                            className={cn(
+                              'opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-black/10 transition-opacity cursor-pointer disabled:opacity-25',
+                              isSelected
+                                ? 'text-primary-foreground'
+                                : 'text-muted-foreground hover:text-foreground'
+                            )}
+                          >
+                            <ChevronUp className="size-3" />
+                          </button>
+                          <button
+                            type="button"
+                            title="Mover pasta para baixo"
+                            disabled={idx === folders.length - 1}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              moveFolderByOffset(folderPath, 1)
+                            }}
+                            className={cn(
+                              'opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-black/10 transition-opacity cursor-pointer disabled:opacity-25',
+                              isSelected
+                                ? 'text-primary-foreground'
+                                : 'text-muted-foreground hover:text-foreground'
+                            )}
+                          >
+                            <ChevronDown className="size-3" />
+                          </button>
+                        </>
+                      )}
                       <button
                         type="button"
                         title="Excluir pasta"
@@ -452,7 +578,7 @@ export function AppleSidebar({
                       </button>
                       <span
                         className={cn(
-                          'text-xs tabular-nums',
+                          'ml-0.5 text-xs tabular-nums',
                           isSelected
                             ? 'text-primary-foreground/90 font-semibold'
                             : 'text-muted-foreground'

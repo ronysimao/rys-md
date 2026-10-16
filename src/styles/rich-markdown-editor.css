@@ -53,7 +53,16 @@ input[type='file'],
   box-sizing: border-box;
   padding: 6px 16px;
   border-bottom: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
-  background: color-mix(in srgb, var(--background) 88%, transparent);
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.08) 0%,
+      rgba(255, 255, 255, 0.01) 100%
+    ),
+    color-mix(in srgb, var(--background) 78%, transparent);
+  backdrop-filter: blur(28px) saturate(195%);
+  -webkit-backdrop-filter: blur(28px) saturate(195%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
 }
 
 .rich-markdown-toolbar-button {
@@ -91,7 +100,7 @@ input[type='file'],
   min-height: 100%;
   max-width: 860px;
   margin: 0 auto;
-  padding: 16px 40px 120px;
+  padding: 16px 40px 68vh;
   font-size: calc(15px * var(--rys-editor-zoom, 1));
   line-height: 1.72;
   outline: none;
@@ -263,10 +272,10 @@ input[type='file'],
 
 .rich-markdown-editor ul[data-type='taskList'] > li > label input[type='checkbox'] {
   appearance: none;
-  width: 16px;
-  height: 16px;
+  width: 1.06em;
+  height: 1.06em;
   border: 1.5px solid color-mix(in srgb, var(--foreground) 50%, transparent);
-  border-radius: 5px;
+  border-radius: 0.32em;
   background: transparent;
   cursor: pointer;
   position: relative;
@@ -282,12 +291,12 @@ input[type='file'],
 .rich-markdown-editor ul[data-type='taskList'] > li > label input[type='checkbox']:checked::after {
   content: '';
   position: absolute;
-  left: 4px;
-  top: 1px;
-  width: 5px;
-  height: 9px;
+  left: 0.26em;
+  top: 0.06em;
+  width: 0.33em;
+  height: 0.58em;
   border: solid var(--primary-foreground);
-  border-width: 0 2px 2px 0;
+  border-width: 0 0.14em 0.14em 0;
   transform: rotate(45deg);
 }
 
@@ -395,7 +404,7 @@ input[type='file'],
 
 .rich-markdown-editor th,
 .rich-markdown-editor td {
-  padding: 8px 14px;
+  padding: 0.55em 0.9em;
   border: 1px solid var(--border);
   text-align: left;
   vertical-align: top;
@@ -416,7 +425,7 @@ input[type='file'],
   padding: 0.18em 0.42em;
   border-radius: 5px;
   background: color-mix(in srgb, var(--foreground) 8%, transparent);
-  font-size: 0.87em;
+  font-size: 0.88em;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
@@ -426,34 +435,36 @@ input[type='file'],
   background: color-mix(in srgb, var(--foreground) 5%, transparent);
   border: 1px solid color-mix(in srgb, var(--border) 90%, transparent);
   margin: 0.85em 0;
+  font-size: 1em;
 }
 
 .rich-markdown-code-block-lang {
   position: absolute;
-  top: 7px;
-  right: 8px;
+  top: 0.5em;
+  right: 0.6em;
   z-index: 2;
-  padding: 2px 6px;
+  padding: 0.18em 0.45em;
   border-radius: 5px;
   border: 1px solid color-mix(in srgb, var(--foreground) 12%, transparent);
   background: color-mix(in srgb, var(--background) 85%, transparent);
   color: var(--muted-foreground);
-  font-size: 11px;
+  font-size: 0.74em;
   font-family: ui-monospace, monospace;
   cursor: pointer;
 }
 
 .rich-markdown-code-block-wrapper .code-block-copy-btn {
   position: absolute;
-  top: 7px;
-  right: 110px;
+  top: 0.5em;
+  right: 7.4em;
   z-index: 2;
   opacity: 0;
   transition: opacity 0.15s ease;
   background: color-mix(in srgb, var(--background) 80%, transparent);
   border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
   border-radius: 5px;
-  padding: 3px 6px;
+  padding: 0.2em 0.45em;
+  font-size: 0.74em;
   cursor: pointer;
   color: var(--muted-foreground);
   display: flex;
@@ -471,23 +482,26 @@ input[type='file'],
 }
 
 .mermaid-preview {
-  padding: 14px 18px;
+  padding: 1em 1.2em;
   border-top: 1px solid color-mix(in srgb, var(--foreground) 10%, transparent);
+  zoom: var(--rys-editor-zoom, 1);
 }
 
 .rich-markdown-editor pre {
-  padding: 16px 18px;
+  padding: 1.05em 1.2em;
   border-radius: 10px;
   overflow-x: auto;
   line-height: 1.55;
   background: transparent;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 13px;
+  font-size: 0.88em;
 }
 
-.rich-markdown-editor pre code {
+.rich-markdown-editor pre code,
+.rich-markdown-editor pre * {
   padding: 0;
   background: transparent;
+  font-size: inherit;
 }
 
 /* Light theme highlight.js tokens */
@@ -537,22 +551,32 @@ input[type='file'],
   margin: 0.5em 0;
 }
 
-/* ── Slash Command Menu & Link Bubble ── */
+/* ── Slash Command Menu & Link Bubble (Liquid Glass) ── */
 .rich-markdown-slash-menu {
   position: absolute;
   z-index: 40;
   display: flex;
   width: min(300px, calc(100% - 24px));
-  max-height: 360px;
+  max-height: 340px;
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--popover);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid color-mix(in srgb, var(--border) 85%, rgba(255, 255, 255, 0.22));
+  border-radius: 14px;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.16) 0%,
+      rgba(255, 255, 255, 0.03) 60%,
+      color-mix(in srgb, var(--primary) 8%, transparent) 100%
+    ),
+    color-mix(in srgb, var(--popover) 82%, transparent);
+  backdrop-filter: blur(38px) saturate(215%) contrast(105%);
+  -webkit-backdrop-filter: blur(38px) saturate(215%) contrast(105%);
   color: var(--popover-foreground);
-  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.32);
+  box-shadow:
+    0 18px 42px rgba(0, 0, 0, 0.38),
+    inset 0 1px 1px rgba(255, 255, 255, 0.28),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 
 .rich-markdown-slash-search {

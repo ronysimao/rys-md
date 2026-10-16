@@ -56,7 +56,7 @@ Você pode criar blocos retráteis normais ou com títulos H1–H5 usando o coma
 \`\`\`rust
 // Motor nativo em Rust sincronizando seus arquivos .md em tempo real
 pub fn welcome_to_rys_md(user: &str) -> String {
-    format!("Olá, {}! Suas notas estão salvas em ~/Documentos/RysNotes", user)
+    format!("Olá, {}! Suas notas estão salvas em ~/Documentos/RYS MD", user)
 }
 \`\`\`
 
@@ -103,7 +103,7 @@ Use pastas na barra lateral esquerda ou adicione tags como #projetos e #ideias e
 2. Fixar notas importantes no topo clicando no ícone de **Alfinete** 📌.
 3. Alternar entre **Dark Mode** e **Light Mode** no rodapé da barra lateral.
 
-> Dica: A primeira linha da sua nota define automaticamente o nome do arquivo \`.md\` na pasta \`~/Documentos/RysNotes\`!
+> Dica: A primeira linha da sua nota define automaticamente o nome do arquivo \`.md\` na pasta \`~/Documentos/RYS MD\`!
 `
 
 async function ensureVaultInitialized(vaultPath: string): Promise<void> {

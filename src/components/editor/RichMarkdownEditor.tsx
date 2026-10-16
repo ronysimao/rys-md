@@ -616,7 +616,10 @@ export function RichMarkdownEditor({
           }}
         >
           {/* Data completa de criação no topo da nota (estilo Apple Notes do Mac) */}
-          <div className="pt-4 pb-1 text-center text-[12px] font-medium text-muted-foreground/80 select-none">
+          <div
+            className="pt-4 pb-1 text-center font-medium text-muted-foreground/80 select-none"
+            style={{ fontSize: 'calc(12px * var(--rys-editor-zoom, 1))' }}
+          >
             {formatFullDateTime(createdAt)}
           </div>
 

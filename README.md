@@ -65,10 +65,10 @@ Para isso, o **Rys MD** combina:
 ## 📦 Instalação & Compilação
 
 ### 1. Instalar o Pacote `.deb` no Ubuntu / Debian / Linux Mint
-Se você já gerou ou baixou o pacote `.deb` em `release/rys-md_0.1.0_amd64.deb`:
+Se você já gerou ou baixou o pacote `.deb` em `release/rys-md_0.2.0_amd64.deb`:
 
 ```bash
-sudo dpkg -i release/rys-md_0.1.0_amd64.deb
+sudo dpkg -i release/rys-md_0.2.0_amd64.deb
 ```
 
 Depois de instalado, basta abrir **Rys MD** pelo menu de aplicativos do sistema ou executar `rys-md` no terminal.
@@ -88,7 +88,7 @@ bun run dev
 ```bash
 bun run build:deb
 ```
-O pacote instalável será gerado automaticamente em `release/rys-md_0.1.0_amd64.deb`.
+O pacote instalável será gerado automaticamente em `release/rys-md_<versão>_amd64.deb`.
 
 ### 4. Build Multiplataforma (Linux `.deb` / `.AppImage` e Windows `.exe` Instalador / Portátil)
 O projeto conta com configuração completa para **Tauri v2** (`src-tauri/`) e pipeline automatizado no GitHub Actions (`.github/workflows/release.yml`), gerando:
@@ -115,6 +115,15 @@ O projeto conta com configuração completa para **Tauri v2** (`src-tauri/`) e p
 
 ---
 
+## 📄 Licença & Atribuição Obrigatória
+
+Este software é **aberto e gratuito para qualquer pessoa e para qualquer finalidade** (pessoal, acadêmica ou comercial), sob os termos da licença [LICENSE](./LICENSE) (**MIT com Atribuição Obrigatória**), desde que sejam expressamente citados como fontes:
+
+1. **Autor / Fonte Original**: **ronysimao — RysDev** ([https://rysdev.com](https://rysdev.com))
+2. **Motor de Edição Markdown**: **Orca ADE** ([https://github.com/stablyai/orca](https://github.com/stablyai/orca))
+
+---
+
 <div align="center">
-  Desenvolvido com ❤️ e Rust por <a href="https://rysdev.com"><strong>RYS DEV (rysdev.com)</strong></a>
+  Desenvolvido com ❤️ e Rust por <strong>ronysimao — <a href="https://rysdev.com">RysDev (rysdev.com)</a></strong>
 </div>

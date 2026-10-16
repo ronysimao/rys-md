@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { FileText, FolderOpen, Plus, Sparkles, X } from 'lucide-react'
+import { FolderOpen, Sparkles, X } from 'lucide-react'
 import type {
   AccentColor,
   EditorMode,
@@ -18,6 +18,7 @@ const STORAGE_ACCENT_KEY = 'rys-md-accent'
 const STORAGE_VAULT_KEY = 'rys-md-vault-path'
 const STORAGE_SELECTED_NOTE_KEY = 'rys-md-selected-note'
 const STORAGE_FILTER_KEY = 'rys-md-active-filter'
+const STORAGE_FOLDER_ORDER_KEY = 'rys-md-folder-order'
 const STORAGE_SIDEBAR_WIDTH_KEY = 'rys-md-sidebar-width'
 const STORAGE_NOTELIST_WIDTH_KEY = 'rys-md-notelist-width'
 
@@ -96,6 +97,21 @@ export function App(): React.JSX.Element {
 
   const [isVaultModalOpen, setIsVaultModalOpen] = useState(false)
   const [vaultPathDraft, setVaultPathDraft] = useState('')
+  const [folderOrder, setFolderOrder] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_FOLDER_ORDER_KEY)
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        if (Array.isArray(parsed)) return parsed.filter((x) => typeof x === 'string')
+      }
+    } catch {
+      // ignore
+    }
+    return []
+  })
+
+  const activeFilterRef = useRef<SidebarFilter>(activeFilter)
+  activeFilterRef.current = activeFilter
 
   const saveTimerRef = useRef<number | null>(null)
   const pendingSaveRef = useRef<{
@@ -199,29 +215,59 @@ export function App(): React.JSX.Element {
         const state = await vaultClient.scanVault(customVaultPath)
         setVaultState(state)
         setError(null)
+        const currentFilter = activeFilterRef.current
+        const visibleInFilter = filterNotesBySidebar(state.notes, currentFilter).sort(
+          (a, b) => {
+            if (a.pinned !== b.pinned) return a.pinned ? -1 : 1
+            return b.updatedAt - a.updatedAt
+          }
+        )
         setSelectedNotePath((prev) => {
-          if (keepSelection && prev && state.notes.some((n) => n.relativePath === prev)) {
+          if (
+            keepSelection &&
+            prev &&
+            visibleInFilter.some((n) => n.relativePath === prev)
+          ) {
             return prev
           }
-          const visibleInFilter = filterNotesBySidebar(state.notes, activeFilter)
-          if (visibleInFilter.length > 0) {
-            return visibleInFilter[0].relativePath
-          }
-          const firstActive = state.notes.find((n) => !n.trashed)
-          return firstActive ? firstActive.relativePath : null
+          return visibleInFilter[0]?.relativePath ?? null
         })
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Erro ao carregar o cofre RysNotes')
+        setError(err instanceof Error ? err.message : 'Erro ao carregar o cofre Rys MD')
       } finally {
         setIsLoading(false)
       }
     },
-    [customVaultPath, activeFilter]
+    [customVaultPath]
   )
 
   useEffect(() => {
     void loadVault(true)
   }, [loadVault])
+
+  const orderedFolders = useMemo(() => {
+    if (!vaultState) return []
+    const existing = new Set(vaultState.folders)
+    const ordered: string[] = []
+    for (const f of folderOrder) {
+      if (existing.has(f)) {
+        ordered.push(f)
+        existing.delete(f)
+      }
+    }
+    for (const f of vaultState.folders) {
+      if (existing.has(f)) {
+        ordered.push(f)
+        existing.delete(f)
+      }
+    }
+    return ordered
+  }, [vaultState, folderOrder])
+
+  const handleReorderFolders = useCallback((nextOrder: string[]) => {
+    setFolderOrder(nextOrder)
+    localStorage.setItem(STORAGE_FOLDER_ORDER_KEY, JSON.stringify(nextOrder))
+  }, [])
 
   // Flush any pending save to disk and return the final relative path
   const flushPendingSave = useCallback(
@@ -289,8 +335,9 @@ export function App(): React.JSX.Element {
 
   const selectedNote: NoteItem | null = useMemo(() => {
     if (!vaultState || !selectedNotePath) return null
-    return vaultState.notes.find((n) => n.relativePath === selectedNotePath) ?? null
-  }, [vaultState, selectedNotePath])
+    const visibleInFilter = filterNotesBySidebar(vaultState.notes, activeFilter)
+    return visibleInFilter.find((n) => n.relativePath === selectedNotePath) ?? null
+  }, [vaultState, selectedNotePath, activeFilter])
 
   const handleContentChange = useCallback(
     (nextMarkdown: string) => {
@@ -584,12 +631,12 @@ export function App(): React.JSX.Element {
         void handleWindowAction('maximize')
       }}
     >
-      {/* Column 1: Left Sidebar (Retractable smoothly with Glassmorphism) */}
+      {/* Column 1: Left Sidebar (Retractable smoothly with Liquid Glass) */}
       {!focusMode && vaultState && (
         <>
           <AppleSidebar
             vaultPath={vaultState.vaultPath}
-            folders={vaultState.folders}
+            folders={orderedFolders}
             notes={vaultState.notes}
             activeFilter={activeFilter}
             isDark={isDark}
@@ -601,6 +648,7 @@ export function App(): React.JSX.Element {
             onSelectFilter={(filter) => void handleSelectSidebarFilter(filter)}
             onCreateFolder={(f) => void handleCreateFolder(f)}
             onDeleteFolder={(f) => void handleDeleteFolder(f)}
+            onReorderFolders={handleReorderFolders}
             onMoveNoteToFolder={(rel, folder) => void handleMoveNoteToFolder(rel, folder)}
             onTrashNote={(rel) => void handleTrashNote(rel)}
             onToggleTheme={() => setIsDark((d) => !d)}
@@ -687,7 +735,7 @@ export function App(): React.JSX.Element {
           <div className="flex-1 flex items-center justify-center">
             <div className="flex flex-col items-center gap-3 text-muted-foreground">
               <div className="w-7 h-7 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-              <span className="text-sm">Carregando cofre RysNotes...</span>
+              <span className="text-sm">Carregando cofre Rys MD...</span>
             </div>
           </div>
         ) : error ? (
@@ -738,23 +786,7 @@ export function App(): React.JSX.Element {
             </div>
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-            <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4 bg-primary/15 text-primary">
-              <FileText className="w-8 h-8" />
-            </div>
-            <h2 className="text-base font-semibold mb-1">Nenhuma nota selecionada</h2>
-            <p className="text-xs max-w-xs mb-5 text-muted-foreground">
-              Selecione uma nota na coluna ao lado ou crie uma nova nota com o editor Markdown enriquecido do Orca ADE.
-            </p>
-            <button
-              type="button"
-              onClick={() => void handleCreateNote()}
-              className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary hover:opacity-90 text-primary-foreground font-semibold text-xs shadow-sm transition"
-            >
-              <Plus className="w-4 h-4" />
-              Nova Nota (Ctrl+N)
-            </button>
-          </div>
+          <div className="flex-1 h-full" />
         )}
       </main>
 

@@ -389,12 +389,18 @@ export function syncSlashMenu(
   const start = selection.from - ($from.parentOffset - slashOffset)
   const coords = view.coordsAtPos(selection.from)
   const rect = root.getBoundingClientRect()
+  const menuHeight = 340
+  const rawTop = coords.bottom - rect.top + 8
+  const top =
+    rawTop + menuHeight > rect.height - 12
+      ? Math.max(48, coords.top - rect.top - menuHeight - 8)
+      : rawTop
 
   setSlashMenu({
     query: slashMatch[1] ?? '',
     from: start,
     to: selection.from,
     left: Math.max(12, Math.min(coords.left - rect.left, rect.width - 310)),
-    top: coords.bottom - rect.top + 8
+    top
   })
 }
