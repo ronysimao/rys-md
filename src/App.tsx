@@ -8,7 +8,7 @@ import type {
   VaultState
 } from '@/types/notes'
 import { vaultClient } from '@/lib/vault-client'
-import { AppleSidebar } from '@/components/layout/AppleSidebar'
+import { AppleSidebar, handleWindowAction } from '@/components/layout/AppleSidebar'
 import { AppleNoteList } from '@/components/layout/AppleNoteList'
 import { NoteHeaderBar } from '@/components/layout/NoteHeaderBar'
 import { RichMarkdownEditor } from '@/components/editor/RichMarkdownEditor'
@@ -557,7 +557,33 @@ export function App(): React.JSX.Element {
   }
 
   return (
-    <div className="rys-app-backdrop flex h-screen w-screen overflow-hidden text-foreground select-none">
+    <div
+      className="rys-app-backdrop flex h-screen w-screen overflow-hidden text-foreground select-none"
+      onMouseDown={(e) => {
+        if (e.button !== 0 || e.clientY > 52) return
+        const target = e.target as HTMLElement | null
+        if (
+          target?.closest(
+            'button, a, input, textarea, select, [role="button"], [role="separator"]'
+          )
+        ) {
+          return
+        }
+        void handleWindowAction('drag')
+      }}
+      onDoubleClick={(e) => {
+        if (e.clientY > 52) return
+        const target = e.target as HTMLElement | null
+        if (
+          target?.closest(
+            'button, a, input, textarea, select, [role="button"], [role="separator"]'
+          )
+        ) {
+          return
+        }
+        void handleWindowAction('maximize')
+      }}
+    >
       {/* Column 1: Left Sidebar (Retractable smoothly with Glassmorphism) */}
       {!focusMode && vaultState && (
         <>

@@ -677,13 +677,13 @@ fn find_dist_dir() -> PathBuf {
 }
 
 fn find_free_port() -> u16 {
-    if TcpListener::bind("127.0.0.1:1420").is_ok() {
-        return 1420;
+    if TcpListener::bind("127.0.0.1:14280").is_ok() {
+        return 14280;
     }
     TcpListener::bind("127.0.0.1:0")
         .and_then(|l| l.local_addr())
         .map(|a| a.port())
-        .unwrap_or(1420)
+        .unwrap_or(14280)
 }
 
 fn mime_for_path(path: &Path) -> &'static str {
@@ -711,24 +711,183 @@ fn mime_for_path(path: &Path) -> &'static str {
     }
 }
 
+const GTK_WEBKIT_SCRIPT: &str = r#"
+import sys
+import os
+import gi
+gi.require_version('Gtk', '3.0')
+gi.require_version('WebKit2', '4.1')
+from gi.repository import Gtk, WebKit2, Gdk, GLib
+
+url = sys.argv[1]
+GLib.set_prgname('rys-md')
+GLib.set_application_name('Rys MD')
+
+win = Gtk.Window(title='Rys MD')
+win.set_default_size(1360, 860)
+win.set_position(Gtk.WindowPosition.CENTER)
+win.set_decorated(False)
+
+for icon_path in [
+    '/usr/share/icons/hicolor/128x128/apps/rys-md.png',
+    '/usr/share/icons/hicolor/256x256/apps/rys-md.png',
+]:
+    if os.path.exists(icon_path):
+        try:
+            win.set_icon_from_file(icon_path)
+            break
+        except Exception:
+            pass
+
+data_dir = os.path.expanduser('~/.local/share/rys-md/webkit-data')
+cache_dir = os.path.expanduser('~/.local/share/rys-md/webkit-cache')
+os.makedirs(data_dir, exist_ok=True)
+os.makedirs(cache_dir, exist_ok=True)
+
+data_manager = WebKit2.WebsiteDataManager(
+    base_data_directory=data_dir,
+    base_cache_directory=cache_dir
+)
+context = WebKit2.WebContext.new_with_website_data_manager(data_manager)
+
+ucm = WebKit2.UserContentManager()
+script = WebKit2.UserScript.new(
+    'window.__RYS_NATIVE_GTK__ = true;',
+    WebKit2.UserContentInjectedFrames.TOP_FRAME,
+    WebKit2.UserScriptInjectionTime.START,
+    None,
+    None
+)
+ucm.add_script(script)
+
+wv = WebKit2.WebView.new_with_context(context)
+settings = wv.get_settings()
+settings.set_enable_javascript(True)
+settings.set_javascript_can_access_clipboard(True)
+settings.set_enable_write_console_messages_to_stdout(False)
+settings.set_enable_developer_extras(True)
+
+last_press = {'button': 1, 'rx': 0, 'ry': 0, 'time': 0}
+
+def get_resize_edge(w, x, y):
+    alloc = w.get_allocation()
+    width, height = alloc.width, alloc.height
+    border = 6
+    left = x < border
+    right = x >= width - border
+    top = y < border
+    bottom = y >= height - border
+    if top and left: return Gdk.WindowEdge.NORTH_WEST
+    if top and right: return Gdk.WindowEdge.NORTH_EAST
+    if bottom and left: return Gdk.WindowEdge.SOUTH_WEST
+    if bottom and right: return Gdk.WindowEdge.SOUTH_EAST
+    if left: return Gdk.WindowEdge.WEST
+    if right: return Gdk.WindowEdge.EAST
+    if top: return Gdk.WindowEdge.NORTH
+    if bottom: return Gdk.WindowEdge.SOUTH
+    return None
+
+def on_button_press(widget, event):
+    if event.button == 1:
+        last_press['button'] = event.button
+        last_press['rx'] = int(event.x_root)
+        last_press['ry'] = int(event.y_root)
+        last_press['time'] = event.time
+        if not win.is_maximized():
+            edge = get_resize_edge(win, event.x, event.y)
+            if edge is not None:
+                win.begin_resize_drag(edge, event.button, int(event.x_root), int(event.y_root), event.time)
+                return True
+    return False
+
+wv.connect('button-press-event', on_button_press)
+
+def on_permission_request(webview, request):
+    request.allow()
+    return True
+
+wv.connect('permission-request', on_permission_request)
+
+def on_title_changed(webview, param):
+    title = webview.get_title() or ''
+    if not title.startswith('__RYS_WIN_CMD__:'):
+        return
+    parts = title.split(':')
+    cmd = parts[1] if len(parts) > 1 else ''
+    if cmd == 'close':
+        win.close()
+        Gtk.main_quit()
+    elif cmd == 'minimize':
+        win.iconify()
+    elif cmd == 'maximize':
+        if win.is_maximized():
+            win.unmaximize()
+        else:
+            win.maximize()
+    elif cmd == 'drag':
+        if not win.is_maximized():
+            win.begin_move_drag(
+                last_press['button'],
+                last_press['rx'],
+                last_press['ry'],
+                last_press['time']
+            )
+
+wv.connect('notify::title', on_title_changed)
+win.connect('destroy', Gtk.main_quit)
+
+win.add(wv)
+wv.load_uri(url)
+win.show_all()
+wv.run_javascript('window.__RYS_NATIVE_GTK__ = true;', None, None, None)
+Gtk.main()
+"#;
+
 fn spawn_app_window(url: &str) {
-    let browsers = ["google-chrome", "brave-browser", "chromium-browser", "chromium"];
-    for bin in browsers {
-        if Command::new("which")
-            .arg(bin)
+    let url_owned = url.to_string();
+    std::thread::spawn(move || {
+        // 1. Tenta abrir a janela nativa Linux (GTK3 + WebKit2GTK)
+        let has_gtk_webkit = Command::new("/usr/bin/python3")
+            .arg("-c")
+            .arg("import gi; gi.require_version('Gtk', '3.0'); gi.require_version('WebKit2', '4.1'); from gi.repository import Gtk, WebKit2")
             .output()
             .map(|o| o.status.success())
-            .unwrap_or(false)
-        {
-            let _ = Command::new(bin)
-                .arg(format!("--app={url}"))
-                .arg("--window-size=1360,860")
-                .arg("--class=RysMD")
-                .spawn();
-            return;
+            .unwrap_or(false);
+
+        if has_gtk_webkit {
+            if let Ok(mut child) = Command::new("/usr/bin/python3")
+                .arg("-c")
+                .arg(GTK_WEBKIT_SCRIPT)
+                .arg(&url_owned)
+                .spawn()
+            {
+                let _ = child.wait();
+                std::process::exit(0);
+            }
         }
-    }
-    let _ = Command::new("xdg-open").arg(url).spawn();
+
+        // 2. Fallback: navegadores reais instalados em /usr/bin
+        let browsers = [
+            "/usr/bin/google-chrome-stable",
+            "/usr/bin/brave-browser",
+            "/usr/bin/microsoft-edge-stable",
+            "/snap/bin/chromium",
+        ];
+        for bin in browsers {
+            if Path::new(bin).is_file() {
+                if let Ok(mut child) = Command::new(bin)
+                    .arg(format!("--app={url_owned}"))
+                    .arg("--window-size=1360,860")
+                    .arg("--class=rys-md")
+                    .spawn()
+                {
+                    let _ = child.wait();
+                    return;
+                }
+            }
+        }
+        let _ = Command::new("xdg-open").arg(&url_owned).spawn();
+    });
 }
 
 fn main() {

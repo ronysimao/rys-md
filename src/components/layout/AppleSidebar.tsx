@@ -40,7 +40,9 @@ interface AppleSidebarProps {
   onChangeVaultPath: () => void
 }
 
-export async function handleWindowAction(action: 'close' | 'minimize' | 'maximize') {
+export async function handleWindowAction(
+  action: 'close' | 'minimize' | 'maximize' | 'drag'
+) {
   const isTauri =
     typeof window !== 'undefined' &&
     Boolean((window as unknown as Record<string, unknown>).__TAURI_INTERNALS__)
@@ -52,19 +54,35 @@ export async function handleWindowAction(action: 'close' | 'minimize' | 'maximiz
       if (action === 'close') await win.close()
       else if (action === 'minimize') await win.minimize()
       else if (action === 'maximize') await win.toggleMaximize()
+      else if (action === 'drag') await win.startDragging()
       return
     } catch {
       // fallback below
     }
   }
 
+  // Sinaliza a janela nativa Linux (GTK3 + WebKit2) via document.title
+  if (typeof document !== 'undefined') {
+    document.title = `__RYS_WIN_CMD__:${action}:${Date.now()}`
+    setTimeout(() => {
+      if (document.title.startsWith('__RYS_WIN_CMD__:')) {
+        document.title = 'Rys MD'
+      }
+    }, 60)
+  }
+
   if (action === 'close') {
     window.close()
   } else if (action === 'maximize') {
-    if (!document.fullscreenElement) {
-      void document.documentElement.requestFullscreen().catch(() => {})
-    } else {
-      void document.exitFullscreen().catch(() => {})
+    if (
+      typeof window !== 'undefined' &&
+      !(window as unknown as Record<string, unknown>).__RYS_NATIVE_GTK__
+    ) {
+      if (!document.fullscreenElement) {
+        void document.documentElement.requestFullscreen().catch(() => {})
+      } else {
+        void document.exitFullscreen().catch(() => {})
+      }
     }
   }
 }

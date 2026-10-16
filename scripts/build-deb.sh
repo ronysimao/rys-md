@@ -68,6 +68,7 @@ Version: ${VERSION}
 Section: editors
 Priority: optional
 Architecture: ${ARCH}
+Depends: python3, python3-gi, gir1.2-gtk-3.0, gir1.2-webkit2-4.1
 Installed-Size: ${INSTALLED_SIZE}
 Maintainer: Rys Dev <dev@rys.md>
 Description: Rys MD - Rich Markdown Note-Taking App for Linux
