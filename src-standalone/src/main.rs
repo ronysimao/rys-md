@@ -652,6 +652,293 @@ fn handle_api_post(pathname: &str, body: &serde_json::Value) -> Result<serde_jso
             let _ = Command::new("xdg-open").arg(target).spawn();
             Ok(serde_json::json!({ "ok": true }))
         }
+        "/api/vault/open-external-url" => {
+            if let Some(url) = body.get("url").and_then(|v| v.as_str()) {
+                let _ = Command::new("xdg-open").arg(url).spawn();
+            }
+            Ok(serde_json::json!({ "ok": true }))
+        }
+        "/api/vault/open-os-emoji" => {
+            std::thread::spawn(|| {
+                let candidates: &[(&str, &[&str])] = &[
+                    ("gnome-characters", &[]),
+                    ("plasma-emojier", &[]),
+                    ("emote", &[]),
+                    ("ibus", &["emoji"]),
+                ];
+                for (bin, args) in candidates {
+                    if Command::new(bin).args(*args).spawn().is_ok() {
+                        return;
+                    }
+                }
+            });
+            Ok(serde_json::json!({ "ok": true }))
+        }
+        "/api/vault/export-pdf" => {
+            let default_file_name = body
+                .get("defaultFileName")
+                .and_then(|v| v.as_str())
+                .unwrap_or("Nota.pdf");
+            let html = body
+                .get("html")
+                .and_then(|v| v.as_str())
+                .unwrap_or_default();
+
+            let tmp_html = std::env::temp_dir().join("rys-md-export-a4.html");
+            fs::write(&tmp_html, html).map_err(|e| e.to_string())?;
+
+            let picker_script = r#"
+import sys, os
+try:
+    import gi
+    gi.require_version('Gtk', '3.0')
+    from gi.repository import Gtk
+    dialog = Gtk.FileChooserDialog(
+        title='Exportar para PDF (A4)',
+        parent=None,
+        action=Gtk.FileChooserAction.SAVE
+    )
+    dialog.add_buttons(
+        Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
+        Gtk.STOCK_SAVE, Gtk.ResponseType.ACCEPT
+    )
+    dialog.set_do_overwrite_confirmation(True)
+    docs_dir = os.path.expanduser('~/Documentos')
+    if not os.path.isdir(docs_dir):
+        docs_dir = os.path.expanduser('~')
+    dialog.set_current_folder(docs_dir)
+    dialog.set_current_name(sys.argv[1])
+    pdf_filter = Gtk.FileFilter()
+    pdf_filter.set_name('Documento PDF (*.pdf)')
+    pdf_filter.add_pattern('*.pdf')
+    dialog.add_filter(pdf_filter)
+    res = dialog.run()
+    chosen = dialog.get_filename() if res == Gtk.ResponseType.ACCEPT else ''
+    dialog.destroy()
+    while Gtk.events_pending():
+        Gtk.main_iteration()
+    if chosen:
+        if not chosen.lower().endswith('.pdf'):
+            chosen += '.pdf'
+        print(chosen)
+except Exception:
+    pass
+"#;
+
+            let output = Command::new("/usr/bin/python3")
+                .arg("-c")
+                .arg(picker_script)
+                .arg(default_file_name)
+                .output()
+                .map_err(|e| e.to_string())?;
+
+            let chosen_path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            if chosen_path.is_empty() {
+                return Ok(serde_json::json!({ "ok": false, "cancelled": true }));
+            }
+
+            // Render A4 PDF via headless browser if available, else WebKit2.PrintOperation (A4)
+            let mut exported = false;
+            let chromium_bins = [
+                "/usr/bin/google-chrome-stable",
+                "/usr/bin/google-chrome",
+                "/usr/bin/brave-browser",
+                "/usr/bin/microsoft-edge-stable",
+                "/usr/bin/chromium",
+                "/usr/bin/chromium-browser",
+                "/snap/bin/chromium",
+            ];
+            for bin in chromium_bins {
+                if Path::new(bin).is_file() {
+                    if let Ok(st) = Command::new(bin)
+                        .arg("--headless")
+                        .arg("--disable-gpu")
+                        .arg("--no-pdf-header-footer")
+                        .arg(format!("--print-to-pdf={chosen_path}"))
+                        .arg(&tmp_html)
+                        .status()
+                    {
+                        if st.success() && Path::new(&chosen_path).is_file() {
+                            exported = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if !exported {
+                let webkit_print_script = r#"
+import sys
+import gi
+gi.require_version('Gtk', '3.0')
+gi.require_version('WebKit2', '4.1')
+from gi.repository import Gtk, WebKit2, GLib
+
+html_path = sys.argv[1]
+pdf_path = sys.argv[2]
+
+win = Gtk.Window()
+win.set_default_size(800, 1120)
+wv = WebKit2.WebView()
+win.add(wv)
+
+def on_load_changed(view, event):
+    if event == WebKit2.LoadEvent.FINISHED:
+        op = WebKit2.PrintOperation.new(view)
+        settings = Gtk.PrintSettings()
+        settings.set(Gtk.PRINT_SETTINGS_PRINTER, 'Print to File')
+        settings.set(Gtk.PRINT_SETTINGS_OUTPUT_FILE_FORMAT, 'pdf')
+        settings.set(Gtk.PRINT_SETTINGS_OUTPUT_URI, GLib.filename_to_uri(pdf_path, None))
+        op.set_print_settings(settings)
+        page_setup = Gtk.PageSetup()
+        page_setup.set_paper_size(Gtk.PaperSize.new(Gtk.PAPER_NAME_A4))
+        op.set_page_setup(page_setup)
+        op.connect('finished', lambda *a: Gtk.main_quit())
+        op.connect('failed', lambda *a: Gtk.main_quit())
+        op.print_()
+
+wv.connect('load-changed', on_load_changed)
+wv.load_uri(GLib.filename_to_uri(html_path, None))
+GLib.timeout_add_seconds(12, Gtk.main_quit)
+Gtk.main()
+"#;
+                let _ = Command::new("/usr/bin/python3")
+                    .env("LC_ALL", "C")
+                    .env("WEBKIT_DISABLE_COMPOSITING_MODE", "1")
+                    .env("WEBKIT_DISABLE_DMABUF_RENDERER", "1")
+                    .arg("-c")
+                    .arg(webkit_print_script)
+                    .arg(&tmp_html)
+                    .arg(&chosen_path)
+                    .status();
+            }
+
+            Ok(serde_json::json!({
+                "ok": true,
+                "savedPath": chosen_path
+            }))
+        }
+        "/api/vault/check-update" => {
+            let current_version = body
+                .get("currentVersion")
+                .and_then(|v| v.as_str())
+                .unwrap_or("0.4.0");
+            let check_script = r#"
+import sys, json, urllib.request
+
+curr = sys.argv[1].lstrip('vV')
+def parse_ver(v):
+    parts = []
+    for p in v.lstrip('vV').replace('-', '.').split('.'):
+        try: parts.append(int(p))
+        except: parts.append(0)
+    while len(parts) < 3: parts.append(0)
+    return tuple(parts[:3])
+
+try:
+    req = urllib.request.Request(
+        'https://api.github.com/repos/ronysimao/rys-md/releases/latest',
+        headers={'Accept': 'application/vnd.github+json', 'User-Agent': 'RysMD-Updater'}
+    )
+    with urllib.request.urlopen(req, timeout=5) as resp:
+        data = json.loads(resp.read().decode('utf-8'))
+    tag = (data.get('tag_name') or curr).lstrip('vV')
+    has_update = parse_ver(tag) > parse_ver(curr)
+    deb_url = None
+    for a in data.get('assets', []):
+        name = a.get('name', '')
+        if name.endswith('.deb'):
+            deb_url = a.get('browser_download_url')
+            break
+    print(json.dumps({
+        'hasUpdate': has_update,
+        'latestVersion': tag,
+        'releaseUrl': data.get('html_url') or 'https://github.com/ronysimao/rys-md/releases',
+        'downloadUrl': deb_url
+    }))
+except Exception:
+    print(json.dumps({
+        'hasUpdate': False,
+        'latestVersion': curr,
+        'releaseUrl': 'https://github.com/ronysimao/rys-md/releases'
+    }))
+"#;
+            let out = Command::new("/usr/bin/python3")
+                .arg("-c")
+                .arg(check_script)
+                .arg(current_version)
+                .output()
+                .map_err(|e| e.to_string())?;
+            let parsed: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap_or_else(|_| {
+                serde_json::json!({
+                    "hasUpdate": false,
+                    "latestVersion": current_version,
+                    "releaseUrl": "https://github.com/ronysimao/rys-md/releases"
+                })
+            });
+            Ok(parsed)
+        }
+        "/api/vault/perform-update" => {
+            let download_url = body
+                .get("downloadUrl")
+                .and_then(|v| v.as_str())
+                .unwrap_or_default()
+                .to_string();
+            let pid = std::process::id();
+            let exe_path = std::env::current_exe()
+                .map(|p| p.to_string_lossy().to_string())
+                .unwrap_or_else(|_| "/usr/bin/rys-md".to_string());
+
+            let updater_py = r#"
+import sys, os, json, time, subprocess, urllib.request
+
+download_url = sys.argv[1]
+old_pid = int(sys.argv[2])
+exe_path = sys.argv[3]
+
+if not download_url:
+    try:
+        req = urllib.request.Request(
+            'https://api.github.com/repos/ronysimao/rys-md/releases/latest',
+            headers={'Accept': 'application/vnd.github+json', 'User-Agent': 'RysMD-Updater'}
+        )
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            data = json.loads(resp.read().decode('utf-8'))
+        for a in data.get('assets', []):
+            if a.get('name', '').endswith('.deb'):
+                download_url = a.get('browser_download_url')
+                break
+    except Exception:
+        pass
+
+deb_path = '/tmp/rys-md-auto-update.deb'
+if download_url:
+    try:
+        urllib.request.urlretrieve(download_url, deb_path)
+    except Exception:
+        pass
+
+if os.path.isfile(deb_path):
+    subprocess.run(['pkexec', 'dpkg', '-i', deb_path])
+
+try:
+    os.kill(old_pid, 15)
+except Exception:
+    pass
+
+time.sleep(0.6)
+subprocess.Popen([exe_path], start_new_session=True)
+"#;
+            let _ = Command::new("/usr/bin/python3")
+                .arg("-c")
+                .arg(updater_py)
+                .arg(&download_url)
+                .arg(pid.to_string())
+                .arg(&exe_path)
+                .spawn();
+
+            Ok(serde_json::json!({ "ok": true }))
+        }
         _ => Err("Not found".to_string()),
     }
 }

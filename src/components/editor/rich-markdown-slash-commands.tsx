@@ -17,6 +17,7 @@ import {
   Pilcrow,
   Quote,
   Sigma,
+  Smile,
   Table2,
   Workflow
 } from 'lucide-react'
@@ -324,6 +325,15 @@ export const slashCommands: SlashCommand[] = [
     group: 'Mídia',
     description: 'Inserir uma imagem do seu computador.',
     run: (editor) => editor.chain().focus().run()
+  },
+  {
+    id: 'emoji',
+    label: 'Emoji',
+    aliases: ['emoji', 'emoticon', 'smiley', 'carinha'],
+    icon: icon(Smile),
+    group: 'Mídia',
+    description: 'Inserir um emoji de acordo com o sistema operacional.',
+    run: (editor) => editor.chain().focus().run()
   }
 ]
 
@@ -343,13 +353,18 @@ export function filterRichMarkdownSlashCommands(
 
 export function runSlashCommand(
   editor: Editor,
-  slashMenu: { from: number; to: number },
+  slashMenu: SlashMenuState,
   command: SlashCommand,
-  onImageCommand?: () => void
+  onImageCommand?: () => void,
+  onEmojiCommand?: (menu: SlashMenuState) => void
 ): void {
   editor.chain().focus().deleteRange({ from: slashMenu.from, to: slashMenu.to }).run()
   if (command.id === 'image' && onImageCommand) {
     onImageCommand()
+    return
+  }
+  if (command.id === 'emoji' && onEmojiCommand) {
+    onEmojiCommand(slashMenu)
     return
   }
   command.run(editor)

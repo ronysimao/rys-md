@@ -88,10 +88,12 @@ Para isso, o **Rys MD** combina:
 ### ✍️ Editor Rich Markdown (Orca ADE Engine)
 - **Dual-Mode Real (`Rich` ⇄ `Source`)**: Edite visualmente com **TipTap v3 (`@tiptap/markdown`)** ou edite o código Markdown puro no **CodeMirror 6** com sincronização bidirecional imediata.
 - **Busca e Substituição na Nota (`Ctrl + F` / `Ctrl + H`)**: Barra flutuante idêntica à do Orca ADE (`Buscar no editor visual`) funcionando tanto no modo **Rich** quanto no modo **Source**, com contador de ocorrências, diferenciação de maiúsculas/minúsculas (`Aa`), palavra inteira (`ab`) e substituição individual ou em lote.
-- **Menu de Comandos Slash (`/`)**: Digite `/` em qualquer linha vazia e navegue pelo teclado (com posicionamento inteligente acima ou abaixo do cursor) para inserir títulos (`H1`–`H5`), checklists interativos (`- [ ]`), tabelas, blocos de código, citações, divisores, equações matemáticas, diagramas Mermaid, seções retráteis ou imagens.
+- **Menu de Comandos Slash (`/`) & Emojis Nativos do SO**: Digite `/` em qualquer linha vazia e navegue pelo teclado para inserir títulos (`H1`–`H5`), checklists interativos (`- [ ]`), tabelas, blocos de código, citações, divisores, equações matemáticas, diagramas Mermaid, seções retráteis, imagens ou **Emojis** renderizados de acordo com o Sistema Operacional (Linux, macOS ou Windows).
+- **Table of Contents (Heading Outline — mín. 150px)**: Painel lateral direito retrátil e redimensionável dentro da 3ª coluna que exibe a árvore hierárquica de escrita (`H1`–`H5`) com filtros por nível e navegação rápida.
 - **Diagramas Mermaid & Matemática KaTeX**: Renderização visual ao vivo de fluxogramas/diagramas de sequência Mermaid e equações LaTeX (`$inline$` e `$$bloco$$`).
 - **Imagens por Colagem Direta (`Ctrl+V`) ou Drag & Drop**: Cole prints diretamente da área de transferência; o motor em Rust salva o arquivo automaticamente em `assets/` dentro do cofre e insere a referência Markdown na nota.
-- **Exportação Rápida**: Copie a nota inteira como **Markdown puro** ou como **HTML compilado** (`text/html` + `text/plain`) com um único clique no topo da nota.
+- **Exportação para PDF (A4) & Cópia Rápida**: Exporte suas notas para **PDF formato A4** com tratamento inteligente de quebra de página e modal nativo do sistema pré-preenchido com `<Nome da Nota>.pdf`, ou copie como **Markdown puro** / **HTML compilado** (`text/html` + `text/plain`).
+- **Auto-Update Estilo Orca ADE**: Verificação e atualização com 1 clique que fecha o programa, instala a nova versão e reabre automaticamente exatamente na nota em que você estava.
 
 ---
 
@@ -101,7 +103,7 @@ Para isso, o **Rys MD** combina:
 | :--- | :--- | :--- |
 | **Core / Backend** | **Rust** (`Tauri v2` + `tiny_http` / `walkdir`) | Leitura/escrita atômica de arquivos `.md`, gerenciamento de ativos (`assets/`), preservação de UUIDs em `.rys-index.json` e janela nativa Linux (`GTK3 + WebKit2GTK`), Windows (`WebView2`) e macOS (`WKWebView`). |
 | **Frontend UI** | **React 19 + TypeScript + Tailwind CSS v4** | Interface reativa em 3 colunas com *Liquid Glass*, divisórias redimensionáveis e temas dinâmicos. |
-| **Editor WYSIWYG** | **TipTap v3 + ProseMirror** | Serialização bidirecional Markdown, busca in-editor (`Ctrl+F`), Slash Menu, tabelas com controles flutuantes, checklists e seções retráteis. |
+| **Editor WYSIWYG** | **TipTap v3 + ProseMirror** | Serialização bidirecional Markdown, busca in-editor (`Ctrl+F`), Slash Menu, Table of Contents, tabelas com controles flutuantes, checklists e seções retráteis. |
 | **Editor Source** | **CodeMirror 6** | Edição de Markdown cru com numeração de linhas, *code folding*, busca completa e *syntax highlighting*. |
 | **Renderizadores** | **Mermaid v11 + KaTeX + Lowlight** | Diagramas técnicos, expressões matemáticas LaTeX e blocos de código coloridos. |
 
@@ -113,7 +115,7 @@ Os binários pré-compilados para **Linux** (`.deb` e `.AppImage`), **Windows** 
 
 ### 1. Instalar o Pacote `.deb` no Ubuntu / Debian / Linux Mint
 ```bash
-sudo dpkg -i release/rys-md_0.3.0_amd64.deb
+sudo dpkg -i release/rys-md_0.4.0_amd64.deb
 ```
 Depois de instalado, basta abrir **Rys MD** pelo menu de aplicativos do sistema ou executar `rys-md` no terminal.
 
@@ -132,7 +134,7 @@ bun run dev
 ```bash
 bun run build:deb
 ```
-O pacote instalável será gerado automaticamente em `release/rys-md_0.3.0_amd64.deb`.
+O pacote instalável será gerado automaticamente em `release/rys-md_0.4.0_amd64.deb`.
 
 ---
 

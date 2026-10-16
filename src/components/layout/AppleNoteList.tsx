@@ -32,6 +32,7 @@ interface AppleNoteListProps {
   onTogglePin: (relativePath: string) => void
   onTrashNote: (relativePath: string) => void
   onRestoreNote: (relativePath: string) => void
+  onOpenVersionModal?: () => void
 }
 
 export function AppleNoteList({
@@ -48,7 +49,8 @@ export function AppleNoteList({
   onCreateNote,
   onTogglePin,
   onTrashNote,
-  onRestoreNote
+  onRestoreNote,
+  onOpenVersionModal
 }: AppleNoteListProps): React.JSX.Element {
   const headerTitle =
     activeFilter.kind === 'all'
@@ -263,6 +265,7 @@ export function AppleNoteList({
             <WindowTrafficLights
               onToggleSidebar={onToggleSidebar}
               sidebarCollapsed={sidebarCollapsed}
+              onOpenVersionModal={onOpenVersionModal}
             />
           )}
           <div className="min-w-0">

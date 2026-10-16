@@ -4,17 +4,19 @@ import {
   Code2,
   Copy,
   FileCode2,
+  FileDown,
   FolderOpen,
+  ListTree,
   Maximize2,
   Minimize2,
   Pin,
-  Printer,
   RotateCcw,
   Sparkles,
   Trash2
 } from 'lucide-react'
 import { marked } from 'marked'
 import { cn, countWordsAndChars } from '@/lib/utils'
+import { exportActiveNoteToPdf } from '@/components/editor/markdown-export-pdf'
 import { WindowTrafficLights } from './AppleSidebar'
 import type { EditorMode, NoteItem } from '@/types/notes'
 
@@ -23,12 +25,15 @@ interface NoteHeaderBarProps {
   editorMode: EditorMode
   saveStatus: 'saved' | 'saving' | 'dirty'
   focusMode: boolean
+  isTocOpen: boolean
   onToggleFocusMode: () => void
+  onToggleToc: () => void
   onChangeEditorMode: (mode: EditorMode) => void
   onTogglePin: () => void
   onTrashNote: () => void
   onRestoreNote: () => void
   onRevealInFolder: () => void
+  onOpenVersionModal?: () => void
 }
 
 export function NoteHeaderBar({
@@ -36,14 +41,18 @@ export function NoteHeaderBar({
   editorMode,
   saveStatus,
   focusMode,
+  isTocOpen,
   onToggleFocusMode,
+  onToggleToc,
   onChangeEditorMode,
   onTogglePin,
   onTrashNote,
   onRestoreNote,
-  onRevealInFolder
+  onRevealInFolder,
+  onOpenVersionModal
 }: NoteHeaderBarProps): React.JSX.Element {
   const [copiedType, setCopiedType] = useState<'md' | 'html' | null>(null)
+  const [isExportingPdf, setIsExportingPdf] = useState(false)
   const { words, chars } = countWordsAndChars(note.content)
 
   const handleCopyMarkdown = async () => {
@@ -70,8 +79,17 @@ export function NoteHeaderBar({
     setTimeout(() => setCopiedType(null), 1500)
   }
 
-  const handleExportPdf = () => {
-    window.print()
+  const handleExportPdf = async () => {
+    if (isExportingPdf) return
+    setIsExportingPdf(true)
+    try {
+      await exportActiveNoteToPdf({
+        title: note.title || 'Nota',
+        markdownContent: note.content
+      })
+    } finally {
+      setIsExportingPdf(false)
+    }
   }
 
   const isEditing = saveStatus !== 'saved'
@@ -84,6 +102,7 @@ export function NoteHeaderBar({
           <WindowTrafficLights
             onToggleSidebar={onToggleFocusMode}
             sidebarCollapsed={true}
+            onOpenVersionModal={onOpenVersionModal}
           />
         )}
 
@@ -132,7 +151,7 @@ export function NoteHeaderBar({
         </div>
       </div>
 
-      {/* Direita: Toggle Rich/Source (Orca) + Ações Rápidas */}
+      {/* Direita: Toggle Rich/Source (Orca) + Table of Contents + Ações Rápidas */}
       <div className="flex items-center gap-1.5 shrink-0">
         {/* Toggle Rich / Source estilo Orca ADE */}
         <div className="inline-flex items-center rounded-lg border border-border bg-muted/50 p-0.5">
@@ -145,7 +164,7 @@ export function NoteHeaderBar({
                 ? 'bg-primary text-primary-foreground shadow-xs'
                 : 'text-muted-foreground hover:text-foreground'
             )}
-            title="Modo Rich WYSIWYG (Tiptap v3)"
+            title="Modo Rich WYSIWYG"
           >
             <Sparkles className="size-3" />
             <span>Rich</span>
@@ -159,12 +178,29 @@ export function NoteHeaderBar({
                 ? 'bg-primary text-primary-foreground shadow-xs'
                 : 'text-muted-foreground hover:text-foreground'
             )}
-            title="Modo Código Markdown Cru (CodeMirror 6)"
+            title="Código Markdown"
           >
             <Code2 className="size-3" />
             <span>Source</span>
           </button>
         </div>
+
+        {/* Botão Table of Contents (Heading Outline) ao lado do toggle Rich | Source */}
+        <button
+          type="button"
+          aria-label="Table of Contents"
+          aria-pressed={isTocOpen}
+          onClick={onToggleToc}
+          title="Table of Contents"
+          className={cn(
+            'inline-flex items-center justify-center rounded-lg border p-1.5 transition-colors cursor-pointer',
+            isTocOpen
+              ? 'border-primary/60 bg-primary/15 text-primary'
+              : 'border-border bg-muted/30 hover:bg-accent text-muted-foreground hover:text-foreground'
+          )}
+        >
+          <ListTree className="size-3.5" />
+        </button>
 
         <div className="mx-1 h-4 w-px bg-border" />
 
@@ -225,14 +261,16 @@ export function NoteHeaderBar({
           <FolderOpen className="size-3.5" />
         </button>
 
-        {/* Exportar / Imprimir PDF */}
+        {/* Exportar para PDF (A4 com tratamento de quebra de página e modal nativo) */}
         <button
           type="button"
-          onClick={handleExportPdf}
-          title="Exportar / Imprimir (PDF)"
-          className="inline-flex items-center justify-center rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
+          disabled={isExportingPdf}
+          onClick={() => void handleExportPdf()}
+          title="Exportar para PDF"
+          className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer disabled:opacity-50"
         >
-          <Printer className="size-3.5" />
+          <FileDown className="size-3.5 text-primary" />
+          <span className="hidden xl:inline font-semibold">PDF</span>
         </button>
 
         {/* Restaurar ou Mover para Lixeira */}
@@ -260,3 +298,4 @@ export function NoteHeaderBar({
     </header>
   )
 }
+

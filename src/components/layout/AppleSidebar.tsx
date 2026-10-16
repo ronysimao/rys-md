@@ -17,9 +17,12 @@ import {
   Maximize2,
   ChevronUp,
   ChevronDown,
-  GripVertical
+  GripVertical,
+  RefreshCw,
+  Sparkles
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { APP_VERSION } from '@/lib/version-changelog'
 import type { AccentColor, NoteItem, SidebarFilter } from '@/types/notes'
 
 interface AppleSidebarProps {
@@ -32,6 +35,14 @@ interface AppleSidebarProps {
   collapsed: boolean
   width: number
   isResizing?: boolean
+  updateInfo?: {
+    hasUpdate: boolean
+    latestVersion: string
+    releaseUrl: string
+    downloadUrl?: string
+  } | null
+  isCheckingUpdate?: boolean
+  isUpdating?: boolean
   onToggleCollapse: () => void
   onSelectFilter: (filter: SidebarFilter) => void
   onCreateFolder: (folderPath: string) => void
@@ -42,6 +53,8 @@ interface AppleSidebarProps {
   onToggleTheme: () => void
   onChangeAccentColor: (color: AccentColor) => void
   onChangeVaultPath: () => void
+  onOpenVersionModal: () => void
+  onCheckOrPerformUpdate: () => void
 }
 
 export async function handleWindowAction(
@@ -93,15 +106,17 @@ export async function handleWindowAction(
 
 export function WindowTrafficLights({
   onToggleSidebar,
-  sidebarCollapsed
+  sidebarCollapsed,
+  onOpenVersionModal
 }: {
   onToggleSidebar: () => void
   sidebarCollapsed: boolean
+  onOpenVersionModal?: () => void
 }): React.JSX.Element {
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-2">
       {/* Botões de Controle de Janela (Fechar, Minimizar, Maximizar) no canto superior esquerdo */}
-      <div className="group/lights flex items-center gap-1.5">
+      <div className="group/lights flex items-center gap-1.5 mr-1">
         <button
           type="button"
           onClick={() => void handleWindowAction('close')}
@@ -137,6 +152,18 @@ export function WindowTrafficLights({
       >
         <PanelLeft className="size-4" />
       </button>
+
+      {/* Label Clicável da Versão do Aplicativo ao lado do botão de expandir/recolher */}
+      {onOpenVersionModal && (
+        <button
+          type="button"
+          onClick={onOpenVersionModal}
+          title={`Versão v${APP_VERSION} — Clique para ver as novidades e o repositório`}
+          className="inline-flex items-center rounded-md border border-border/70 bg-accent/45 px-1.5 py-0.5 text-[10.5px] font-semibold font-mono text-muted-foreground hover:border-primary/50 hover:bg-primary/15 hover:text-primary transition-colors cursor-pointer"
+        >
+          v{APP_VERSION}
+        </button>
+      )}
     </div>
   )
 }
@@ -151,6 +178,9 @@ export function AppleSidebar({
   collapsed,
   width,
   isResizing = false,
+  updateInfo,
+  isCheckingUpdate = false,
+  isUpdating = false,
   onToggleCollapse,
   onSelectFilter,
   onCreateFolder,
@@ -160,7 +190,9 @@ export function AppleSidebar({
   onTrashNote,
   onToggleTheme,
   onChangeAccentColor,
-  onChangeVaultPath
+  onChangeVaultPath,
+  onOpenVersionModal,
+  onCheckOrPerformUpdate
 }: AppleSidebarProps): React.JSX.Element {
   const [creatingFolder, setCreatingFolder] = useState(false)
   const [newFolderName, setNewFolderName] = useState('')
@@ -226,11 +258,12 @@ export function AppleSidebar({
       )}
     >
       <div className="flex h-full w-full min-w-[150px] flex-col">
-        {/* Header estilo Apple Notes: Controles de Janela + Botão Retrátil */}
+        {/* Header estilo Apple Notes: Controles de Janela + Botão Retrátil + Versão Clicável */}
         <div className="flex h-12 items-center justify-between px-3.5 border-b border-border/50 shrink-0">
           <WindowTrafficLights
             onToggleSidebar={onToggleCollapse}
             sidebarCollapsed={collapsed}
+            onOpenVersionModal={onOpenVersionModal}
           />
         </div>
 
@@ -627,6 +660,58 @@ export function AppleSidebar({
               </div>
             </div>
           )}
+        </div>
+
+        {/* Botão de Atualização no rodapé da primeira coluna ACIMA da linha divisória que está ACIMA de Nova Pasta (estilo Orca ADE) */}
+        <div className="px-2.5 pb-2 pt-1 shrink-0">
+          <button
+            type="button"
+            disabled={isCheckingUpdate || isUpdating}
+            onClick={onCheckOrPerformUpdate}
+            title={
+              updateInfo?.hasUpdate
+                ? `Nova versão v${updateInfo.latestVersion} disponível! Clique para atualizar e reabrir automaticamente de onde parou.`
+                : 'Verificar atualizações do Rys MD (fecha, atualiza e reabre de onde estava)'
+            }
+            className={cn(
+              'flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-all cursor-pointer disabled:opacity-60',
+              updateInfo?.hasUpdate
+                ? 'bg-primary text-primary-foreground shadow-sm ring-1 ring-primary/50'
+                : 'border border-border/70 bg-accent/40 text-muted-foreground hover:bg-accent hover:text-foreground'
+            )}
+          >
+            <span className="flex items-center gap-2 truncate">
+              {updateInfo?.hasUpdate ? (
+                <Sparkles className="size-3.5 shrink-0 animate-pulse" />
+              ) : (
+                <RefreshCw
+                  className={cn(
+                    'size-3.5 shrink-0 text-primary',
+                    (isCheckingUpdate || isUpdating) && 'animate-spin'
+                  )}
+                />
+              )}
+              <span className="truncate">
+                {isUpdating
+                  ? 'Atualizando e reiniciando...'
+                  : isCheckingUpdate
+                    ? 'Verificando atualização...'
+                    : updateInfo?.hasUpdate
+                      ? `Atualizar p/ v${updateInfo.latestVersion}`
+                      : 'Atualizar Rys MD'}
+              </span>
+            </span>
+            <span
+              className={cn(
+                'rounded px-1.5 py-0.5 text-[10px] font-mono shrink-0',
+                updateInfo?.hasUpdate
+                  ? 'bg-black/20 text-primary-foreground'
+                  : 'bg-background/60 text-muted-foreground'
+              )}
+            >
+              {updateInfo?.hasUpdate ? 'NOVO' : `v${APP_VERSION}`}
+            </span>
+          </button>
         </div>
 
         {/* Rodapé da Sidebar: Botão Nova Pasta no canto inferior esquerdo + Tema + Cor */}

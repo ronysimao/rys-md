@@ -8,9 +8,11 @@ import type {
   VaultState
 } from '@/types/notes'
 import { vaultClient } from '@/lib/vault-client'
+import { APP_VERSION } from '@/lib/version-changelog'
 import { AppleSidebar, handleWindowAction } from '@/components/layout/AppleSidebar'
 import { AppleNoteList } from '@/components/layout/AppleNoteList'
 import { NoteHeaderBar } from '@/components/layout/NoteHeaderBar'
+import { VersionChangelogModal } from '@/components/layout/VersionChangelogModal'
 import { RichMarkdownEditor } from '@/components/editor/RichMarkdownEditor'
 
 const STORAGE_THEME_KEY = 'rys-md-theme'
@@ -21,6 +23,8 @@ const STORAGE_FILTER_KEY = 'rys-md-active-filter'
 const STORAGE_FOLDER_ORDER_KEY = 'rys-md-folder-order'
 const STORAGE_SIDEBAR_WIDTH_KEY = 'rys-md-sidebar-width'
 const STORAGE_NOTELIST_WIDTH_KEY = 'rys-md-notelist-width'
+const STORAGE_TOC_OPEN_KEY = 'rys-md-toc-open'
+const STORAGE_EDITOR_MODE_KEY = 'rys-md-editor-mode'
 
 const MIN_SIDEBAR_WIDTH = 150
 const MIN_NOTELIST_WIDTH = 200
@@ -93,7 +97,24 @@ export function App(): React.JSX.Element {
 
   const [focusMode, setFocusMode] = useState(false)
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'dirty'>('saved')
-  const [editorMode, setEditorMode] = useState<EditorMode>('rich')
+  const [editorMode, setEditorMode] = useState<EditorMode>(() => {
+    const saved = localStorage.getItem(STORAGE_EDITOR_MODE_KEY)
+    return saved === 'source' ? 'source' : 'rich'
+  })
+  const [isTocOpen, setIsTocOpen] = useState<boolean>(() => {
+    return localStorage.getItem(STORAGE_TOC_OPEN_KEY) === 'true'
+  })
+
+  // Version & Auto-Update state (Orca ADE style)
+  const [isVersionModalOpen, setIsVersionModalOpen] = useState(false)
+  const [updateInfo, setUpdateInfo] = useState<{
+    hasUpdate: boolean
+    latestVersion: string
+    releaseUrl: string
+    downloadUrl?: string
+  } | null>(null)
+  const [isCheckingUpdate, setIsCheckingUpdate] = useState(false)
+  const [isUpdating, setIsUpdating] = useState(false)
 
   const [isVaultModalOpen, setIsVaultModalOpen] = useState(false)
   const [vaultPathDraft, setVaultPathDraft] = useState('')
@@ -151,6 +172,14 @@ export function App(): React.JSX.Element {
   useEffect(() => {
     localStorage.setItem(STORAGE_NOTELIST_WIDTH_KEY, String(noteListWidth))
   }, [noteListWidth])
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_EDITOR_MODE_KEY, editorMode)
+  }, [editorMode])
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_TOC_OPEN_KEY, String(isTocOpen))
+  }, [isTocOpen])
 
   // Mouse drag handler for column dividers
   useEffect(() => {
@@ -590,6 +619,69 @@ export function App(): React.JSX.Element {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [handleCreateNote])
 
+  const handleCheckUpdate = useCallback(async () => {
+    setIsCheckingUpdate(true)
+    try {
+      const info = await vaultClient.checkUpdate(APP_VERSION)
+      setUpdateInfo(info)
+      return info
+    } finally {
+      setIsCheckingUpdate(false)
+    }
+  }, [])
+
+  const handlePerformUpdate = useCallback(
+    async (overrideInfo?: {
+      latestVersion: string
+      downloadUrl?: string
+      releaseUrl: string
+    }) => {
+      const target = overrideInfo ?? updateInfo
+      setIsUpdating(true)
+      try {
+        await flushPendingSave(true)
+        await vaultClient.performUpdate({
+          downloadUrl: target?.downloadUrl,
+          latestVersion: target?.latestVersion
+        })
+      } catch {
+        if (target?.releaseUrl) {
+          void vaultClient.openExternalUrl(target.releaseUrl)
+        }
+      } finally {
+        setIsUpdating(false)
+      }
+    },
+    [flushPendingSave, updateInfo]
+  )
+
+  const handleCheckOrPerformUpdate = useCallback(async () => {
+    if (updateInfo?.hasUpdate) {
+      await handlePerformUpdate(updateInfo)
+      return
+    }
+    const info = await handleCheckUpdate()
+    if (info.hasUpdate) {
+      await handlePerformUpdate(info)
+    } else {
+      setIsVersionModalOpen(true)
+    }
+  }, [updateInfo, handleCheckUpdate, handlePerformUpdate])
+
+  // Automatic background update check (Orca ADE style)
+  useEffect(() => {
+    const initialTimer = window.setTimeout(() => {
+      void handleCheckUpdate()
+    }, 1800)
+    const interval = window.setInterval(() => {
+      void handleCheckUpdate()
+    }, 15 * 60 * 1000)
+    return () => {
+      window.clearTimeout(initialTimer)
+      window.clearInterval(interval)
+    }
+  }, [handleCheckUpdate])
+
   const handleConfirmVaultPath = (e: React.FormEvent) => {
     e.preventDefault()
     const trimmed = vaultPathDraft.trim()
@@ -644,6 +736,9 @@ export function App(): React.JSX.Element {
             collapsed={sidebarCollapsed}
             width={sidebarWidth}
             isResizing={activeResizer === 'col1'}
+            updateInfo={updateInfo}
+            isCheckingUpdate={isCheckingUpdate}
+            isUpdating={isUpdating}
             onToggleCollapse={handleToggleSidebarCollapse}
             onSelectFilter={(filter) => void handleSelectSidebarFilter(filter)}
             onCreateFolder={(f) => void handleCreateFolder(f)}
@@ -657,6 +752,8 @@ export function App(): React.JSX.Element {
               setVaultPathDraft(vaultState.vaultPath)
               setIsVaultModalOpen(true)
             }}
+            onOpenVersionModal={() => setIsVersionModalOpen(true)}
+            onCheckOrPerformUpdate={() => void handleCheckOrPerformUpdate()}
           />
 
           {/* Linha divisória ajustável entre Coluna 1 (min 150px, <150px oculta) e Coluna 2 */}
@@ -705,6 +802,7 @@ export function App(): React.JSX.Element {
             onTogglePin={(rel) => void handleTogglePin(rel)}
             onTrashNote={(rel) => void handleTrashNote(rel)}
             onRestoreNote={(rel) => void handleRestoreNote(rel)}
+            onOpenVersionModal={() => setIsVersionModalOpen(true)}
           />
 
           {/* Linha divisória ajustável entre Coluna 2 (min 200px) e Coluna 3 (min 250px) */}
@@ -758,7 +856,9 @@ export function App(): React.JSX.Element {
               editorMode={editorMode}
               saveStatus={saveStatus}
               focusMode={focusMode}
+              isTocOpen={isTocOpen}
               onToggleFocusMode={() => setFocusMode((v) => !v)}
+              onToggleToc={() => setIsTocOpen((v) => !v)}
               onChangeEditorMode={setEditorMode}
               onTogglePin={() => void handleTogglePin(selectedNote.relativePath)}
               onTrashNote={() => void handleTrashNote(selectedNote.relativePath)}
@@ -769,6 +869,7 @@ export function App(): React.JSX.Element {
                   relativePath: selectedNote.relativePath
                 })
               }
+              onOpenVersionModal={() => setIsVersionModalOpen(true)}
             />
             <div className="flex-1 min-h-0 overflow-hidden select-text">
               <RichMarkdownEditor
@@ -780,6 +881,8 @@ export function App(): React.JSX.Element {
                 mode={editorMode}
                 isDark={isDark}
                 readOnly={selectedNote.trashed}
+                isTocOpen={isTocOpen}
+                onToggleToc={() => setIsTocOpen((v) => !v)}
                 onContentChange={handleContentChange}
                 onForceSave={(md) => void handleForceSave(md)}
               />
@@ -789,6 +892,17 @@ export function App(): React.JSX.Element {
           <div className="flex-1 h-full" />
         )}
       </main>
+
+      {/* Version Changelog & Repository Modal */}
+      <VersionChangelogModal
+        isOpen={isVersionModalOpen}
+        updateInfo={updateInfo}
+        isCheckingUpdate={isCheckingUpdate}
+        isUpdating={isUpdating}
+        onClose={() => setIsVersionModalOpen(false)}
+        onCheckUpdate={() => void handleCheckUpdate()}
+        onPerformUpdate={() => void handlePerformUpdate()}
+      />
 
       {/* Vault Directory Switcher Modal */}
       {isVaultModalOpen && (

@@ -133,7 +133,22 @@ input[type='file'],
   background: var(--primary);
   box-shadow: 0 0 6px color-mix(in srgb, var(--primary) 50%, transparent);
   animation: rys-caret-blink 1.06s infinite ease-in-out;
-  transition: top 35ms linear, left 35ms linear, height 35ms linear;
+  transform-origin: bottom center;
+  transition:
+    top 35ms linear,
+    left 35ms linear,
+    height 35ms linear,
+    width 80ms ease,
+    transform 80ms ease;
+}
+
+.rys-thick-caret.is-bold {
+  width: 4.8px;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--primary) 78%, transparent);
+}
+
+.rys-thick-caret.is-italic {
+  transform: skewX(-12deg);
 }
 
 .rys-thick-caret.is-typing {
@@ -850,4 +865,20 @@ input[type='file'],
   overflow: auto !important;
   padding-bottom: 50vh !important;
 }
+
+/* Native OS Emoji Picker Popover */
+.rich-markdown-emoji-menu {
+  position: absolute;
+  z-index: 50;
+  width: min(336px, calc(100% - 24px));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--border) 85%, rgba(255, 255, 255, 0.22));
+  box-shadow:
+    0 18px 42px rgba(0, 0, 0, 0.38),
+    inset 0 1px 1px rgba(255, 255, 255, 0.28);
+}
+
 

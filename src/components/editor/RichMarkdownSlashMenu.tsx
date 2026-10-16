@@ -14,6 +14,7 @@ type RichMarkdownSlashMenuProps = {
   filteredCommands: SlashCommand[]
   selectedIndex: number
   onImagePick: () => void
+  onEmojiSelect: (menu: SlashMenuState) => void
 }
 
 export function RichMarkdownSlashMenu({
@@ -21,7 +22,8 @@ export function RichMarkdownSlashMenu({
   slashMenu,
   filteredCommands,
   selectedIndex,
-  onImagePick
+  onImagePick,
+  onEmojiSelect
 }: RichMarkdownSlashMenuProps): React.JSX.Element {
   const resultsRef = useRef<HTMLDivElement | null>(null)
   let currentGroup: SlashCommand['group'] | null = null
@@ -89,7 +91,14 @@ export function RichMarkdownSlashMenu({
                   )}
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={() =>
-                    editor && runSlashCommand(editor, slashMenu, command, onImagePick)
+                    editor &&
+                    runSlashCommand(
+                      editor,
+                      slashMenu,
+                      command,
+                      onImagePick,
+                      onEmojiSelect
+                    )
                   }
                 >
                   <span className="rich-markdown-slash-icon">

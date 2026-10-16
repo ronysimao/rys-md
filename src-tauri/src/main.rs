@@ -709,6 +709,43 @@ fn window_action(window: tauri::Window, action: String) -> Result<serde_json::Va
     Ok(serde_json::json!({ "ok": true }))
 }
 
+#[tauri::command]
+fn open_external_url(url: String) -> Result<serde_json::Value, String> {
+    #[cfg(target_os = "windows")]
+    let _ = Command::new("cmd").args(["/C", "start", "", &url]).spawn();
+
+    #[cfg(target_os = "macos")]
+    let _ = Command::new("open").arg(&url).spawn();
+
+    #[cfg(target_os = "linux")]
+    let _ = Command::new("xdg-open").arg(&url).spawn();
+
+    Ok(serde_json::json!({ "ok": true }))
+}
+
+#[tauri::command]
+fn open_os_emoji() -> Result<serde_json::Value, String> {
+    #[cfg(target_os = "macos")]
+    {
+        let _ = Command::new("osascript")
+            .args([
+                "-e",
+                "tell application \"System Events\" to keystroke \" \" using {command down, control down}",
+            ])
+            .spawn();
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        let _ = Command::new("sh")
+            .arg("-c")
+            .arg("gnome-characters || plasma-emojier || emote || ibus emoji || true")
+            .spawn();
+    }
+
+    Ok(serde_json::json!({ "ok": true }))
+}
+
 fn main() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
@@ -724,6 +761,8 @@ fn main() {
             save_asset,
             read_asset_base64,
             reveal_in_folder,
+            open_external_url,
+            open_os_emoji,
             window_action
         ])
         .run(tauri::generate_context!())

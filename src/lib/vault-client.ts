@@ -106,6 +106,91 @@ export const vaultClient = {
     await invokeOrFetch('reveal_in_folder', '/api/vault/reveal-in-folder', params)
   },
 
+  async exportPdf(params: {
+    defaultFileName: string
+    title: string
+    html: string
+  }): Promise<{ ok: boolean; savedPath?: string; cancelled?: boolean }> {
+    try {
+      return await invokeOrFetch('export_pdf', '/api/vault/export-pdf', params)
+    } catch {
+      window.print()
+      return { ok: true }
+    }
+  },
+
+  async openOsEmojiPicker(): Promise<void> {
+    try {
+      await invokeOrFetch('open_os_emoji', '/api/vault/open-os-emoji', {})
+    } catch {
+      // ignore if unsupported in browser
+    }
+  },
+
+  async openExternalUrl(url: string): Promise<void> {
+    try {
+      await invokeOrFetch('open_external_url', '/api/vault/open-external-url', { url })
+    } catch {
+      window.open(url, '_blank', 'noopener,noreferrer')
+    }
+  },
+
+  async checkUpdate(currentVersion: string): Promise<{
+    hasUpdate: boolean
+    latestVersion: string
+    releaseUrl: string
+    downloadUrl?: string
+  }> {
+    try {
+      return await invokeOrFetch('check_update', '/api/vault/check-update', {
+        currentVersion
+      })
+    } catch {
+      // Fallback to direct GitHub API fetch
+      try {
+        const res = await fetch(
+          'https://api.github.com/repos/ronysimao/rys-md/releases/latest',
+          { headers: { Accept: 'application/vnd.github+json' } }
+        )
+        if (!res.ok) {
+          return {
+            hasUpdate: false,
+            latestVersion: currentVersion,
+            releaseUrl: 'https://github.com/ronysimao/rys-md/releases'
+          }
+        }
+        const data = (await res.json()) as {
+          tag_name?: string
+          html_url?: string
+          assets?: Array<{ name?: string; browser_download_url?: string }>
+        }
+        const latestVersion = (data.tag_name || currentVersion).replace(/^v/i, '')
+        const hasUpdate = isNewerSemver(latestVersion, currentVersion)
+        const debAsset = data.assets?.find((a) => a.name?.endsWith('.deb'))
+        return {
+          hasUpdate,
+          latestVersion,
+          releaseUrl:
+            data.html_url || 'https://github.com/ronysimao/rys-md/releases',
+          downloadUrl: debAsset?.browser_download_url
+        }
+      } catch {
+        return {
+          hasUpdate: false,
+          latestVersion: currentVersion,
+          releaseUrl: 'https://github.com/ronysimao/rys-md/releases'
+        }
+      }
+    }
+  },
+
+  async performUpdate(params: {
+    downloadUrl?: string
+    latestVersion?: string
+  }): Promise<{ ok: boolean; message?: string }> {
+    return invokeOrFetch('perform_update', '/api/vault/perform-update', params)
+  },
+
   resolveAssetUrl(vaultPath: string, src: string): string {
     if (!src) return ''
     if (
@@ -143,4 +228,20 @@ export const vaultClient = {
     }
     return `/api/vault/asset?vaultPath=${encodeURIComponent(vaultPath)}&path=${encodeURIComponent(src)}`
   }
+}
+
+export function isNewerSemver(candidate: string, current: string): boolean {
+  const parse = (v: string) =>
+    v
+      .replace(/^v/i, '')
+      .split(/[.-]/)
+      .map((n) => Number.parseInt(n, 10) || 0)
+  const a = parse(candidate)
+  const b = parse(current)
+  for (let i = 0; i < 3; i++) {
+    const diff = (a[i] ?? 0) - (b[i] ?? 0)
+    if (diff > 0) return true
+    if (diff < 0) return false
+  }
+  return false
 }

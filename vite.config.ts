@@ -603,6 +603,78 @@ function rysVaultDevApiPlugin(): Plugin {
             return
           }
 
+          if (url.pathname === '/api/vault/open-external-url') {
+            const { url: targetUrl } = body
+            if (targetUrl) {
+              exec(`xdg-open "${targetUrl}"`)
+            }
+            res.end(JSON.stringify({ ok: true }))
+            return
+          }
+
+          if (url.pathname === '/api/vault/open-os-emoji') {
+            exec('gnome-characters || plasma-emojier || emote || ibus emoji || true')
+            res.end(JSON.stringify({ ok: true }))
+            return
+          }
+
+          if (url.pathname === '/api/vault/export-pdf') {
+            const { defaultFileName = 'Nota.pdf', html = '' } = body
+            const tmpHtml = path.join(os.tmpdir(), 'rys-md-export-a4.html')
+            await fs.writeFile(tmpHtml, html, 'utf8')
+            const safeDefault = String(defaultFileName).replace(/"/g, '')
+            const pickerCmd = `/usr/bin/python3 -c '
+import sys, os, gi
+gi.require_version("Gtk", "3.0")
+from gi.repository import Gtk
+d = Gtk.FileChooserDialog(title="Exportar para PDF (A4)", parent=None, action=Gtk.FileChooserAction.SAVE)
+d.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_SAVE, Gtk.ResponseType.ACCEPT)
+d.set_do_overwrite_confirmation(True)
+docs = os.path.expanduser("~/Documentos")
+d.set_current_folder(docs if os.path.isdir(docs) else os.path.expanduser("~"))
+d.set_current_name(sys.argv[1])
+r = d.run()
+chosen = d.get_filename() if r == Gtk.ResponseType.ACCEPT else ""
+d.destroy()
+if chosen:
+    if not chosen.lower().endswith(".pdf"): chosen += ".pdf"
+    print(chosen)
+' "${safeDefault}"`
+
+            const chosenPath = await new Promise<string>((resolve) => {
+              exec(pickerCmd, (_err, stdout) => resolve((stdout || '').trim()))
+            })
+            if (!chosenPath) {
+              res.end(JSON.stringify({ ok: false, cancelled: true }))
+              return
+            }
+            await new Promise<void>((resolve) => {
+              exec(
+                `/usr/bin/google-chrome-stable --headless --disable-gpu --no-pdf-header-footer --print-to-pdf="${chosenPath}" "${tmpHtml}"`,
+                () => resolve()
+              )
+            })
+            res.end(JSON.stringify({ ok: true, savedPath: chosenPath }))
+            return
+          }
+
+          if (url.pathname === '/api/vault/check-update') {
+            const { currentVersion = '0.4.0' } = body
+            res.end(
+              JSON.stringify({
+                hasUpdate: false,
+                latestVersion: currentVersion,
+                releaseUrl: 'https://github.com/ronysimao/rys-md/releases'
+              })
+            )
+            return
+          }
+
+          if (url.pathname === '/api/vault/perform-update') {
+            res.end(JSON.stringify({ ok: true }))
+            return
+          }
+
           res.statusCode = 404
           res.end(JSON.stringify({ error: 'Not found' }))
         } catch (err) {

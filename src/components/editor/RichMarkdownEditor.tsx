@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { EditorContent, useEditor, type Editor } from '@tiptap/react'
 import { TextSelection } from '@tiptap/pm/state'
+import { ArrowDownToLine } from 'lucide-react'
 import CodeMirror from '@uiw/react-codemirror'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { languages } from '@codemirror/language-data'
@@ -15,6 +16,16 @@ import {
 import { createRichMarkdownExtensions } from './rich-markdown-extensions'
 import { RichMarkdownToolbar } from './RichMarkdownToolbar'
 import { RichMarkdownSlashMenu } from './RichMarkdownSlashMenu'
+import {
+  RichMarkdownEmojiMenu,
+  type EmojiMenuPosition
+} from './RichMarkdownEmojiMenu'
+import { MarkdownTableOfContentsPanel } from './MarkdownTableOfContentsPanel'
+import {
+  extractMarkdownTableOfContents,
+  extractRichMarkdownTableOfContents,
+  type TableOfContentsItem
+} from './markdown-table-of-contents'
 import { RichMarkdownSearchBar } from './RichMarkdownSearchBar'
 import {
   createRichMarkdownSearchPlugin,
@@ -41,6 +52,9 @@ import { vaultClient } from '@/lib/vault-client'
 import { cn, formatFullDateTime } from '@/lib/utils'
 import type { EditorMode } from '@/types/notes'
 
+const STORAGE_TOC_WIDTH_KEY = 'rys-md-toc-width'
+const MIN_TOC_WIDTH = 150
+
 interface RichMarkdownEditorProps {
   noteId: string
   content: string
@@ -49,6 +63,8 @@ interface RichMarkdownEditorProps {
   mode: EditorMode
   isDark: boolean
   readOnly?: boolean
+  isTocOpen: boolean
+  onToggleToc: () => void
   onContentChange: (nextMarkdown: string) => void
   onForceSave: (nextMarkdown: string) => void
 }
@@ -57,6 +73,8 @@ interface ThickCaretState {
   top: number
   left: number
   height: number
+  isBold: boolean
+  isItalic: boolean
 }
 
 function splitFrontmatter(raw: string): { frontmatter: string; body: string } {
@@ -76,9 +94,12 @@ export function RichMarkdownEditor({
   mode,
   isDark,
   readOnly = false,
+  isTocOpen,
+  onToggleToc,
   onContentChange,
   onForceSave
 }: RichMarkdownEditorProps): React.JSX.Element {
+  const layoutRef = useRef<HTMLDivElement | null>(null)
   const rootRef = useRef<HTMLDivElement | null>(null)
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -102,6 +123,7 @@ export function RichMarkdownEditor({
 
   const [slashMenu, setSlashMenu] = useState<SlashMenuState | null>(null)
   const [selectedSlashIndex, setSelectedSlashIndex] = useState(0)
+  const [emojiMenu, setEmojiMenu] = useState<EmojiMenuPosition | null>(null)
   const [linkBubble, setLinkBubble] = useState<LinkBubbleState | null>(null)
   const [isEditingLink, setIsEditingLink] = useState(false)
   const [thickCaret, setThickCaret] = useState<ThickCaretState | null>(null)
@@ -110,6 +132,13 @@ export function RichMarkdownEditor({
     const saved = Number(localStorage.getItem('rys-md-editor-zoom'))
     return Number.isFinite(saved) && saved >= 70 && saved <= 200 ? saved : 100
   })
+
+  // Table of Contents panel width & resize state
+  const [tocWidth, setTocWidth] = useState<number>(() => {
+    const saved = Number(localStorage.getItem(STORAGE_TOC_WIDTH_KEY))
+    return Number.isFinite(saved) && saved >= MIN_TOC_WIDTH ? saved : 240
+  })
+  const [isResizingToc, setIsResizingToc] = useState(false)
 
   // Orca ADE In-Editor Search & Replace state (works in both Rich and Source modes)
   const searchInputRef = useRef<HTMLInputElement | null>(null)
@@ -156,11 +185,17 @@ export function RichMarkdownEditor({
       setThickCaret(null)
       return
     }
-    const { selection } = ed.state
+    const { selection, storedMarks } = ed.state
     if (!selection.empty) {
       setThickCaret(null)
       return
     }
+    const activeMarks = storedMarks ?? selection.$from.marks()
+    const isBold =
+      ed.isActive('bold') || activeMarks.some((m) => m.type.name === 'bold')
+    const isItalic =
+      ed.isActive('italic') || activeMarks.some((m) => m.type.name === 'italic')
+
     try {
       const coords = ed.view.coordsAtPos(selection.from)
       const rect = container.getBoundingClientRect()
@@ -170,7 +205,9 @@ export function RichMarkdownEditor({
       setThickCaret({
         top,
         left,
-        height: rawHeight
+        height: rawHeight,
+        isBold,
+        isItalic
       })
     } catch {
       setThickCaret(null)
@@ -384,8 +421,12 @@ export function RichMarkdownEditor({
                 event.preventDefault()
                 const chosen = cmds[selectedSlashIndexRef.current] ?? cmds[0]
                 if (chosen) {
-                  runSlashCommand(ed, currentSlash, chosen, () =>
-                    triggerImagePickRef.current()
+                  runSlashCommand(
+                    ed,
+                    currentSlash,
+                    chosen,
+                    () => triggerImagePickRef.current(),
+                    (menu) => setEmojiMenu({ left: menu.left, top: menu.top })
                   )
                 }
                 setSlashMenu(null)
@@ -410,6 +451,9 @@ export function RichMarkdownEditor({
         editorRef.current = nextEditor
         updateThickCaret(nextEditor)
       },
+      onTransaction: ({ editor: nextEditor }) => {
+        updateThickCaret(nextEditor)
+      },
       onFocus: ({ editor: nextEditor }) => {
         updateThickCaret(nextEditor)
       },
@@ -418,6 +462,7 @@ export function RichMarkdownEditor({
       },
       onUpdate: ({ editor: nextEditor }) => {
         editorRef.current = nextEditor
+        setEmojiMenu(null)
         syncSlashMenu(nextEditor, rootRef.current, setSlashMenu)
         markTypingPulse()
         updateThickCaret(nextEditor)
@@ -925,6 +970,131 @@ export function RichMarkdownEditor({
     ]
   }, [])
 
+  // Persist TOC width and handle mouse resize (collapsing smoothly if dragged < 150px)
+  useEffect(() => {
+    localStorage.setItem(STORAGE_TOC_WIDTH_KEY, String(tocWidth))
+  }, [tocWidth])
+
+  useEffect(() => {
+    if (!isResizingToc) return
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const layoutEl = layoutRef.current
+      if (!layoutEl) return
+      const rect = layoutEl.getBoundingClientRect()
+      const desiredTocWidth = rect.right - e.clientX
+      if (desiredTocWidth < MIN_TOC_WIDTH) {
+        if (isTocOpen) {
+          onToggleToc()
+        }
+        setIsResizingToc(false)
+        return
+      }
+      const maxTocWidth = Math.max(MIN_TOC_WIDTH, rect.width - 250)
+      setTocWidth(Math.min(desiredTocWidth, maxTocWidth))
+    }
+
+    const handleMouseUp = () => {
+      setIsResizingToc(false)
+    }
+
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mouseup', handleMouseUp)
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isResizingToc, isTocOpen, onToggleToc])
+
+  // Compute Table of Contents items (hierarchical H1..H5)
+  const tocItems = useMemo<TableOfContentsItem[]>(() => {
+    if (mode === 'source') {
+      return extractMarkdownTableOfContents(content)
+    }
+    if (!editor || editor.isDestroyed) {
+      return extractMarkdownTableOfContents(content)
+    }
+    return extractRichMarkdownTableOfContents(editor.state.doc)
+  }, [mode, content, editor, searchRevision])
+
+  const handleSelectTocItem = useCallback(
+    (item: TableOfContentsItem) => {
+      if (mode === 'source') {
+        const view = cmViewRef.current
+        if (!view || !item.line) return
+        const lineCount = view.state.doc.lines
+        const clampedLine = Math.max(1, Math.min(item.line, lineCount))
+        const lineInfo = view.state.doc.line(clampedLine)
+        view.focus()
+        view.dispatch({
+          selection: { anchor: lineInfo.from },
+          effects: EditorView.scrollIntoView(lineInfo.from, { y: 'start' })
+        })
+        return
+      }
+
+      if (!editor || editor.isDestroyed || item.pos === undefined) return
+      const targetPos = Math.min(
+        Math.max(1, item.pos + 1),
+        editor.state.doc.content.size
+      )
+      editor.chain().focus().setTextSelection(targetPos).run()
+      const container = scrollContainerRef.current
+      if (container) {
+        try {
+          const coords = editor.view.coordsAtPos(targetPos)
+          const rect = container.getBoundingClientRect()
+          const targetTop = container.scrollTop + (coords.top - rect.top) - 24
+          container.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' })
+        } catch {
+          // ignore
+        }
+      }
+      window.requestAnimationFrame(() => updateThickCaret(editor))
+    },
+    [mode, editor, updateThickCaret]
+  )
+
+  // Jump & scroll to the last written line (Ctrl + End behavior)
+  const handleJumpToLastLine = useCallback(() => {
+    if (mode === 'source') {
+      const view = cmViewRef.current
+      if (!view) return
+      const docEnd = view.state.doc.length
+      view.focus()
+      view.dispatch({
+        selection: { anchor: docEnd, head: docEnd },
+        effects: EditorView.scrollIntoView(docEnd, { y: 'center' })
+      })
+      return
+    }
+
+    if (!editor || editor.isDestroyed) return
+    editor.commands.focus('end')
+    const container = scrollContainerRef.current
+    if (container) {
+      window.requestAnimationFrame(() => {
+        try {
+          const endPos = editor.state.selection.to
+          const coords = editor.view.coordsAtPos(endPos)
+          const rect = container.getBoundingClientRect()
+          const targetScroll =
+            container.scrollTop + (coords.top - rect.top) - rect.height * 0.45
+          container.scrollTo({
+            top: Math.max(0, targetScroll),
+            behavior: 'smooth'
+          })
+        } catch {
+          container.scrollTo({
+            top: container.scrollHeight,
+            behavior: 'smooth'
+          })
+        }
+        updateThickCaret(editor)
+      })
+    }
+  }, [mode, editor, updateThickCaret])
+
   const searchBarElement = (
     <RichMarkdownSearchBar
       activeMatchIndex={activeMatchIndex}
@@ -960,48 +1130,79 @@ export function RichMarkdownEditor({
     />
   )
 
+  const jumpToLastLineButton = (
+    <button
+      type="button"
+      onClick={handleJumpToLastLine}
+      title="Rolar para a última linha escrita (Ctrl + End)"
+      aria-label="Rolar para a última linha escrita"
+      className="fixed sm:absolute bottom-5 left-5 z-30 flex size-9 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg ring-1 ring-white/20 transition-all hover:scale-105 hover:opacity-95 active:scale-95 cursor-pointer print:hidden"
+    >
+      <ArrowDownToLine className="size-4" />
+    </button>
+  )
+
+  const tocPanelElement = (
+    <MarkdownTableOfContentsPanel
+      items={tocItems}
+      isOpen={isTocOpen}
+      width={tocWidth}
+      isResizing={isResizingToc}
+      onSelect={handleSelectTocItem}
+      onClose={onToggleToc}
+      onStartResize={(e) => {
+        e.preventDefault()
+        setIsResizingToc(true)
+      }}
+    />
+  )
+
   if (mode === 'source') {
     return (
-      <div
-        ref={rootRef}
-        className="flex h-full min-h-0 flex-1 flex-col bg-editor-surface"
-      >
-        <div className="flex items-center justify-between border-b border-border/60 bg-background/60 px-4 py-1.5 text-[11px] text-muted-foreground font-mono">
-          <span>MODO SOURCE (MARKDOWN CRU — CODEMIRROR 6)</span>
-          <span>{formatFullDateTime(createdAt)}</span>
+      <div ref={layoutRef} className="rich-markdown-editor-layout">
+        <div
+          ref={rootRef}
+          className="relative flex h-full min-h-0 flex-1 flex-col bg-editor-surface min-w-0"
+        >
+          <div className="flex items-center justify-between border-b border-border/60 bg-background/60 px-4 py-1.5 text-[11px] text-muted-foreground font-mono">
+            <span>MODO SOURCE (MARKDOWN CRU — CODEMIRROR 6)</span>
+            <span>{formatFullDateTime(createdAt)}</span>
+          </div>
+          <div className="relative min-h-0 flex-1 overflow-hidden text-sm">
+            <CodeMirror
+              value={content}
+              height="100%"
+              theme={isDark ? oneDark : 'light'}
+              extensions={cmExtensions}
+              editable={!readOnly}
+              onCreateEditor={(view) => {
+                cmViewRef.current = view
+              }}
+              onChange={(val) => {
+                lastCommittedRef.current = val
+                onContentChangeRef.current(val)
+              }}
+              basicSetup={{
+                lineNumbers: true,
+                foldGutter: true,
+                highlightActiveLine: true,
+                bracketMatching: true,
+                searchKeymap: false
+              }}
+              className="rys-codemirror-host h-full font-mono"
+              style={{ fontSize: `${13.5 * (zoomPercent / 100)}px` }}
+            />
+            {searchBarElement}
+            {jumpToLastLineButton}
+          </div>
         </div>
-        <div className="relative min-h-0 flex-1 overflow-hidden text-sm">
-          <CodeMirror
-            value={content}
-            height="100%"
-            theme={isDark ? oneDark : 'light'}
-            extensions={cmExtensions}
-            editable={!readOnly}
-            onCreateEditor={(view) => {
-              cmViewRef.current = view
-            }}
-            onChange={(val) => {
-              lastCommittedRef.current = val
-              onContentChangeRef.current(val)
-            }}
-            basicSetup={{
-              lineNumbers: true,
-              foldGutter: true,
-              highlightActiveLine: true,
-              bracketMatching: true,
-              searchKeymap: false
-            }}
-            className="rys-codemirror-host h-full font-mono"
-            style={{ fontSize: `${13.5 * (zoomPercent / 100)}px` }}
-          />
-          {searchBarElement}
-        </div>
+        {tocPanelElement}
       </div>
     )
   }
 
   return (
-    <div className="rich-markdown-editor-layout">
+    <div ref={layoutRef} className="rich-markdown-editor-layout">
       <div
         ref={rootRef}
         className="rich-markdown-editor-shell"
@@ -1065,11 +1266,16 @@ export function RichMarkdownEditor({
             <RichMarkdownTableControls editor={editor} />
             <EditorContent editor={editor} />
 
-            {/* Cursor "gordinho" que pisca na mesma cor da acentuação */}
+            {/* Cursor "gordinho" que pisca na mesma cor da acentuação (inclinado em Itálico e strong em Negrito) */}
             {thickCaret && !readOnly && (
               <div
                 aria-hidden="true"
-                className={cn('rys-thick-caret', isTyping && 'is-typing')}
+                className={cn(
+                  'rys-thick-caret',
+                  isTyping && 'is-typing',
+                  thickCaret.isBold && 'is-bold',
+                  thickCaret.isItalic && 'is-italic'
+                )}
                 style={{
                   top: `${thickCaret.top}px`,
                   left: `${thickCaret.left}px`,
@@ -1079,6 +1285,7 @@ export function RichMarkdownEditor({
             )}
           </div>
           {searchBarElement}
+          {jumpToLastLineButton}
         </div>
 
         {linkBubble && (
@@ -1103,9 +1310,30 @@ export function RichMarkdownEditor({
             filteredCommands={filteredSlashCommands}
             selectedIndex={selectedSlashIndex}
             onImagePick={triggerImagePick}
+            onEmojiSelect={(menu) => {
+              setSlashMenu(null)
+              setEmojiMenu({ left: menu.left, top: menu.top })
+            }}
+          />
+        )}
+
+        {emojiMenu && (
+          <RichMarkdownEmojiMenu
+            emojiMenu={emojiMenu}
+            isDark={isDark}
+            onSelect={(emoji) => {
+              editor?.chain().focus().insertContent(emoji).run()
+              setEmojiMenu(null)
+            }}
+            onClose={() => {
+              setEmojiMenu(null)
+              editor?.commands.focus()
+            }}
           />
         )}
       </div>
+
+      {tocPanelElement}
     </div>
   )
 }
