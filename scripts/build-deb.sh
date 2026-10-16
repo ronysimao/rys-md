@@ -6,7 +6,7 @@ export PATH="$HOME/.cargo/bin:$PATH"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
-VERSION="$(node -p "require('./package.json').version" 2>/dev/null || echo "0.2.0")"
+VERSION="$(node -p "require('./package.json').version" 2>/dev/null || echo "0.3.0")"
 ARCH="amd64"
 PKG_NAME="rys-md"
 DEB_DIR="$ROOT_DIR/release/${PKG_NAME}_${VERSION}_${ARCH}"
@@ -70,9 +70,9 @@ Priority: optional
 Architecture: ${ARCH}
 Depends: python3, python3-gi, gir1.2-gtk-3.0, gir1.2-webkit2-4.1
 Installed-Size: ${INSTALLED_SIZE}
-Homepage: https://rysdev.com
+Homepage: https://md.rysdev.com
 Maintainer: RYS DEV <contato@rysdev.com>
-Description: Rys MD - Rich Markdown Note-Taking App for Linux (rysdev.com)
+Description: Rys MD - Rich Markdown Note-Taking App for Linux (md.rysdev.com)
  Combines the 3-column layout and fluidity of Apple Notes with
  the dual-mode Rich Markdown Editor (WYSIWYG + CodeMirror 6) of Orca ADE.
  Stores notes locally as pure .md files in ~/Documentos/RYS MD.

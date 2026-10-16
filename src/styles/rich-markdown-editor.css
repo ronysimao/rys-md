@@ -701,3 +701,153 @@ input[type='file'],
   outline: none;
   font-family: ui-monospace, monospace;
 }
+
+/* Orca ADE Rich & Source In-Editor Search Bar (Ctrl+F) */
+.rich-markdown-search {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  z-index: 30;
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  width: fit-content;
+  max-width: min(calc(100% - 24px), 540px);
+  padding: 4px 4px 4px 2px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--background);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.22);
+}
+
+.rich-markdown-search-toggle {
+  width: 18px;
+  min-width: 18px;
+  height: auto;
+  align-self: stretch;
+  padding: 0;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--muted-foreground);
+}
+
+.rich-markdown-search-toggle:hover:not(:disabled) {
+  background: var(--accent);
+  color: var(--foreground);
+}
+
+.rich-markdown-search-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.rich-markdown-search-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.rich-markdown-search-field {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  min-width: 0;
+  width: 248px;
+  padding-right: 3px;
+  border-radius: 4px;
+  border: 1px solid var(--ring);
+  background: var(--background);
+  flex: 0 1 auto;
+}
+
+.rich-markdown-search-option {
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--muted-foreground);
+  flex: 0 0 auto;
+}
+
+.rich-markdown-search-option:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--foreground) 6%, transparent);
+  color: var(--foreground);
+}
+
+.rich-markdown-search-option[data-active='true'] {
+  border-color: color-mix(in srgb, var(--primary) 55%, transparent);
+  background: color-mix(in srgb, var(--primary) 18%, transparent);
+  color: var(--foreground);
+}
+
+.rich-markdown-search-status {
+  min-width: 0;
+  padding: 0 6px;
+  font-size: 12px;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  line-height: 1;
+  flex: 0 0 auto;
+}
+
+.rich-markdown-search-divider {
+  width: 1px;
+  height: 16px;
+  margin: 0 2px;
+  background: var(--border);
+}
+
+.rich-markdown-search-input {
+  font-size: 13px;
+  line-height: 1;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.rich-markdown-search-button {
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--muted-foreground);
+}
+
+.rich-markdown-search-button:hover:not(:disabled) {
+  background: var(--accent);
+  color: var(--foreground);
+}
+
+.rich-markdown-search-match {
+  padding: 0;
+  border-radius: 2px;
+  background: color-mix(in srgb, #facc15 48%, transparent);
+}
+
+.rich-markdown-search-match[data-active='true'] {
+  background: color-mix(in srgb, #38bdf8 56%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, #38bdf8 80%, transparent);
+}
+
+/* CodeMirror 6 Source mode host layout and scroll-past-end */
+.rys-codemirror-host,
+.rys-codemirror-host .cm-editor {
+  height: 100%;
+}
+
+.rys-codemirror-host .cm-scroller {
+  overflow: auto !important;
+  padding-bottom: 50vh !important;
+}
+

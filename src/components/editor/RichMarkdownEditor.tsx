@@ -1,13 +1,28 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { EditorContent, useEditor, type Editor } from '@tiptap/react'
+import { TextSelection } from '@tiptap/pm/state'
 import CodeMirror from '@uiw/react-codemirror'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { languages } from '@codemirror/language-data'
 import { oneDark } from '@codemirror/theme-one-dark'
-import { EditorView } from '@codemirror/view'
+import {
+  Decoration as CmDecoration,
+  type DecorationSet as CmDecorationSet,
+  EditorView,
+  ViewPlugin,
+  type ViewUpdate
+} from '@codemirror/view'
 import { createRichMarkdownExtensions } from './rich-markdown-extensions'
 import { RichMarkdownToolbar } from './RichMarkdownToolbar'
 import { RichMarkdownSlashMenu } from './RichMarkdownSlashMenu'
+import { RichMarkdownSearchBar } from './RichMarkdownSearchBar'
+import {
+  createRichMarkdownSearchPlugin,
+  findPlainTextMatchRanges,
+  findRichMarkdownSearchMatches,
+  richMarkdownSearchPluginKey,
+  type RichMarkdownSearchMatch
+} from './rich-markdown-search'
 import {
   filterRichMarkdownSlashCommands,
   runSlashCommand,
@@ -68,8 +83,13 @@ export function RichMarkdownEditor({
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const editorRef = useRef<Editor | null>(null)
+  const cmViewRef = useRef<EditorView | null>(null)
   const frontmatterRef = useRef<string>('')
   const lastCommittedRef = useRef<string>(content)
+  // Tracks the exact Markdown string currently loaded into or serialized from TipTap Rich mode
+  const lastRichSyncedRef = useRef<string>(content)
+  const modeRef = useRef<EditorMode>(mode)
+  modeRef.current = mode
   const isProgrammaticRef = useRef<boolean>(false)
   const debounceTimerRef = useRef<number | null>(null)
   const typingTimerRef = useRef<number | null>(null)
@@ -90,6 +110,18 @@ export function RichMarkdownEditor({
     const saved = Number(localStorage.getItem('rys-md-editor-zoom'))
     return Number.isFinite(saved) && saved >= 70 && saved <= 200 ? saved : 100
   })
+
+  // Orca ADE In-Editor Search & Replace state (works in both Rich and Source modes)
+  const searchInputRef = useRef<HTMLInputElement | null>(null)
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const [isReplaceMode, setIsReplaceMode] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [replaceQuery, setReplaceQuery] = useState('')
+  const [matchCase, setMatchCase] = useState(false)
+  const [wholeWord, setWholeWord] = useState(false)
+  const [rawActiveMatchIndex, setRawActiveMatchIndex] = useState(0)
+  const [searchRevision, setSearchRevision] = useState(0)
+  const [navigationTrigger, setNavigationTrigger] = useState(0)
 
   const slashMenuRef = useRef<SlashMenuState | null>(null)
   slashMenuRef.current = slashMenu
@@ -298,6 +330,7 @@ export function RichMarkdownEditor({
             }
             const fullMd = serializeEditorContent(ed)
             lastCommittedRef.current = fullMd
+            lastRichSyncedRef.current = fullMd
             onForceSaveRef.current(fullMd)
             return true
           }
@@ -388,16 +421,19 @@ export function RichMarkdownEditor({
         syncSlashMenu(nextEditor, rootRef.current, setSlashMenu)
         markTypingPulse()
         updateThickCaret(nextEditor)
+        setSearchRevision((r) => r + 1)
 
-        if (isProgrammaticRef.current) return
+        if (isProgrammaticRef.current || modeRef.current !== 'rich') return
 
         if (debounceTimerRef.current !== null) {
           window.clearTimeout(debounceTimerRef.current)
         }
         debounceTimerRef.current = window.setTimeout(() => {
           debounceTimerRef.current = null
+          if (modeRef.current !== 'rich') return
           try {
             const nextMd = serializeEditorContent(nextEditor)
+            lastRichSyncedRef.current = nextMd
             if (nextMd !== lastCommittedRef.current) {
               lastCommittedRef.current = nextMd
               onContentChangeRef.current(nextMd)
@@ -427,22 +463,58 @@ export function RichMarkdownEditor({
     [noteId]
   )
 
+  // Register Orca ADE search highlight plugin on TipTap editor
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) return
+    const plugin = createRichMarkdownSearchPlugin()
+    editor.registerPlugin(plugin)
+    return () => {
+      if (!editor.isDestroyed) {
+        editor.unregisterPlugin(richMarkdownSearchPluginKey)
+      }
+    }
+  }, [editor])
+
+  // Flush any pending Rich debounce immediately when switching from Rich to Source mode
+  useEffect(() => {
+    if (mode === 'source' && debounceTimerRef.current !== null) {
+      window.clearTimeout(debounceTimerRef.current)
+      debounceTimerRef.current = null
+      const ed = editorRef.current
+      if (ed && !ed.isDestroyed) {
+        try {
+          const nextMd = serializeEditorContent(ed)
+          lastRichSyncedRef.current = nextMd
+          if (nextMd !== lastCommittedRef.current) {
+            lastCommittedRef.current = nextMd
+            onContentChangeRef.current(nextMd)
+          }
+        } catch {
+          // ignore
+        }
+      }
+    }
+  }, [mode, serializeEditorContent])
+
   // Flush any uncommitted keystrokes immediately if the component unmounts or switches note
   useEffect(() => {
     return () => {
       if (debounceTimerRef.current !== null) {
         window.clearTimeout(debounceTimerRef.current)
         debounceTimerRef.current = null
-        const ed = editorRef.current
-        if (ed && !ed.isDestroyed) {
-          try {
-            const nextMd = serializeEditorContent(ed)
-            if (nextMd !== lastCommittedRef.current) {
-              lastCommittedRef.current = nextMd
-              onContentChangeRef.current(nextMd)
+        if (modeRef.current === 'rich') {
+          const ed = editorRef.current
+          if (ed && !ed.isDestroyed) {
+            try {
+              const nextMd = serializeEditorContent(ed)
+              lastRichSyncedRef.current = nextMd
+              if (nextMd !== lastCommittedRef.current) {
+                lastCommittedRef.current = nextMd
+                onContentChangeRef.current(nextMd)
+              }
+            } catch {
+              // ignore
             }
-          } catch {
-            // ignore
           }
         }
       }
@@ -458,22 +530,288 @@ export function RichMarkdownEditor({
     editor.setEditable(!readOnly)
   }, [editor, readOnly])
 
-  // Sync external changes or note switching
+  // Sync external changes, note switching, AND changes made in Source mode back into Rich mode!
   useEffect(() => {
     const parts = splitFrontmatter(content)
     frontmatterRef.current = parts.frontmatter
-    if (!editor) return
-    if (content === lastCommittedRef.current) return
+    if (!editor || editor.isDestroyed) return
+    if (mode !== 'rich') return
+    if (content === lastRichSyncedRef.current) return
 
+    lastRichSyncedRef.current = content
     lastCommittedRef.current = content
     isProgrammaticRef.current = true
     try {
       editor.commands.setContent(parts.body, { contentType: 'markdown' })
+      setSearchRevision((r) => r + 1)
       updateThickCaret(editor)
     } finally {
       isProgrammaticRef.current = false
     }
-  }, [content, editor, noteId, updateThickCaret])
+  }, [content, editor, noteId, mode, updateThickCaret])
+
+  // Compute search matches for current mode (Rich ProseMirror doc or Source full raw Markdown)
+  const matches = useMemo<RichMarkdownSearchMatch[]>(() => {
+    if (!isSearchOpen || !searchQuery) {
+      return []
+    }
+    if (mode === 'source') {
+      return findPlainTextMatchRanges(content, searchQuery, {
+        matchCase,
+        wholeWord
+      })
+    }
+    if (!editor || editor.isDestroyed) {
+      return []
+    }
+    return findRichMarkdownSearchMatches(editor.state.doc, searchQuery, {
+      matchCase,
+      wholeWord
+    })
+  }, [
+    isSearchOpen,
+    searchQuery,
+    mode,
+    content,
+    editor,
+    matchCase,
+    wholeWord,
+    searchRevision
+  ])
+
+  const matchCount = matches.length
+  const activeMatchIndex =
+    !isSearchOpen || matchCount === 0
+      ? -1
+      : rawActiveMatchIndex >= 0 && rawActiveMatchIndex < matchCount
+        ? rawActiveMatchIndex
+        : 0
+
+  // Sync ProseMirror decorations and scroll in Rich mode
+  const prevSearchSnapRef = useRef<{
+    query: string
+    matchCase: boolean
+    wholeWord: boolean
+    navTrigger: number
+    mode: EditorMode
+  }>({
+    query: '',
+    matchCase: false,
+    wholeWord: false,
+    navTrigger: 0,
+    mode
+  })
+
+  useEffect(() => {
+    const prev = prevSearchSnapRef.current
+    const queryOrNavChanged =
+      prev.query !== (isSearchOpen ? searchQuery : '') ||
+      prev.matchCase !== matchCase ||
+      prev.wholeWord !== wholeWord ||
+      prev.navTrigger !== navigationTrigger ||
+      prev.mode !== mode
+    prevSearchSnapRef.current = {
+      query: isSearchOpen ? searchQuery : '',
+      matchCase,
+      wholeWord,
+      navTrigger: navigationTrigger,
+      mode
+    }
+
+    if (mode === 'rich') {
+      if (!editor || editor.isDestroyed) return
+      const activeMatch =
+        isSearchOpen && searchQuery && activeMatchIndex >= 0
+          ? matches[activeMatchIndex]
+          : null
+
+      const tr = editor.state.tr.setMeta(richMarkdownSearchPluginKey, {
+        activeIndex: activeMatchIndex,
+        matches,
+        query: isSearchOpen ? searchQuery : ''
+      })
+
+      if (activeMatch && queryOrNavChanged) {
+        try {
+          tr.setSelection(
+            TextSelection.create(tr.doc, activeMatch.from, activeMatch.to)
+          )
+        } catch {
+          // ignore if range invalid
+        }
+      }
+      editor.view.dispatch(tr)
+
+      const container = scrollContainerRef.current
+      if (activeMatch && container && queryOrNavChanged) {
+        try {
+          const coords = editor.view.coordsAtPos(activeMatch.from)
+          const containerRect = container.getBoundingClientRect()
+          const relativeTop = coords.top - containerRect.top
+          const targetScroll =
+            container.scrollTop + relativeTop - containerRect.height / 2
+          container.scrollTo({ top: Math.max(0, targetScroll), behavior: 'instant' })
+        } catch {
+          // ignore
+        }
+      }
+    } else if (mode === 'source') {
+      const view = cmViewRef.current
+      if (!view) return
+      const activeMatch =
+        isSearchOpen && searchQuery && activeMatchIndex >= 0
+          ? matches[activeMatchIndex]
+          : null
+
+      // Trigger CodeMirror decoration plugin refresh
+      view.dispatch({
+         ...(activeMatch && queryOrNavChanged
+          ? {
+              selection: { anchor: activeMatch.from, head: activeMatch.to },
+              effects: EditorView.scrollIntoView(activeMatch.from, { y: 'center' })
+            }
+          : {})
+      })
+    }
+  }, [
+    mode,
+    editor,
+    isSearchOpen,
+    searchQuery,
+    matchCase,
+    wholeWord,
+    matches,
+    activeMatchIndex,
+    navigationTrigger
+  ])
+
+  const openSearch = useCallback(
+    (withReplace = false) => {
+      if (withReplace) {
+        setIsReplaceMode(true)
+      }
+      if (isSearchOpen) {
+        window.requestAnimationFrame(() => {
+          searchInputRef.current?.focus()
+          searchInputRef.current?.select()
+        })
+      } else {
+        setIsSearchOpen(true)
+        window.requestAnimationFrame(() => {
+          searchInputRef.current?.focus()
+          searchInputRef.current?.select()
+        })
+      }
+    },
+    [isSearchOpen]
+  )
+
+  const closeSearch = useCallback(() => {
+    setIsSearchOpen(false)
+    setIsReplaceMode(false)
+    setSearchQuery('')
+    setReplaceQuery('')
+    setRawActiveMatchIndex(0)
+    if (modeRef.current === 'rich') {
+      editorRef.current?.commands.focus()
+    } else {
+      cmViewRef.current?.focus()
+    }
+  }, [])
+
+  const moveToMatch = useCallback(
+    (direction: 1 | -1) => {
+      if (matches.length === 0) return
+      setRawActiveMatchIndex((curr) => {
+        const base = curr >= 0 && curr < matches.length ? curr : 0
+        return (base + direction + matches.length) % matches.length
+      })
+      setNavigationTrigger((n) => n + 1)
+    },
+    [matches.length]
+  )
+
+  const replaceCurrentMatch = useCallback(() => {
+    if (readOnly || matches.length === 0) return
+    const idx =
+      activeMatchIndex >= 0 && activeMatchIndex < matches.length
+        ? activeMatchIndex
+        : 0
+    const match = matches[idx]
+    if (!match) return
+
+    if (mode === 'rich') {
+      if (!editor || editor.isDestroyed) return
+      const tr = editor.state.tr
+      if (replaceQuery) {
+        tr.insertText(replaceQuery, match.from, match.to)
+      } else {
+        tr.delete(match.from, match.to)
+      }
+      editor.view.dispatch(tr)
+      setNavigationTrigger((n) => n + 1)
+    } else {
+      const nextContent =
+        content.slice(0, match.from) + replaceQuery + content.slice(match.to)
+      lastCommittedRef.current = nextContent
+      onContentChangeRef.current(nextContent)
+      setNavigationTrigger((n) => n + 1)
+    }
+  }, [readOnly, matches, activeMatchIndex, mode, editor, replaceQuery, content])
+
+  const replaceAllMatches = useCallback(() => {
+    if (readOnly || matches.length === 0) return
+    if (mode === 'rich') {
+      if (!editor || editor.isDestroyed) return
+      const tr = editor.state.tr
+      for (let i = matches.length - 1; i >= 0; i--) {
+        const m = matches[i]!
+        if (replaceQuery) {
+          tr.insertText(replaceQuery, m.from, m.to)
+        } else {
+          tr.delete(tr.mapping.map(m.from), tr.mapping.map(m.to))
+        }
+      }
+      editor.view.dispatch(tr)
+      setNavigationTrigger((n) => n + 1)
+    } else {
+      let nextContent = content
+      for (let i = matches.length - 1; i >= 0; i--) {
+        const m = matches[i]!
+        nextContent =
+          nextContent.slice(0, m.from) + replaceQuery + nextContent.slice(m.to)
+      }
+      lastCommittedRef.current = nextContent
+      onContentChangeRef.current(nextContent)
+      setNavigationTrigger((n) => n + 1)
+    }
+  }, [readOnly, matches, mode, editor, replaceQuery, content])
+
+  // Capture Ctrl+F / Cmd+F and Ctrl+H in both Rich and Source modes
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const isMod = event.ctrlKey || event.metaKey
+      if (isMod && !event.shiftKey && !event.altKey && event.key.toLowerCase() === 'f') {
+        event.preventDefault()
+        event.stopPropagation()
+        openSearch(false)
+        return
+      }
+      if (isMod && !event.shiftKey && event.key.toLowerCase() === 'h') {
+        event.preventDefault()
+        event.stopPropagation()
+        openSearch(true)
+        return
+      }
+      if (event.key === 'Escape' && isSearchOpen) {
+        event.preventDefault()
+        event.stopPropagation()
+        closeSearch()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown, { capture: true })
+    return () => window.removeEventListener('keydown', handleKeyDown, { capture: true })
+  }, [openSearch, closeSearch, isSearchOpen])
 
   const handleToggleLink = useCallback(() => {
     if (!editor) return
@@ -524,28 +862,124 @@ export function RichMarkdownEditor({
     setLinkBubble(null)
   }, [editor])
 
-  const cmExtensions = useMemo(
-    () => [
+  // Keep latest Source search state in a ref for the CodeMirror decoration plugin
+  const cmSearchStateRef = useRef<{
+    isOpen: boolean
+    query: string
+    matches: RichMarkdownSearchMatch[]
+    activeIndex: number
+  }>({
+    isOpen: false,
+    query: '',
+    matches: [],
+    activeIndex: -1
+  })
+  cmSearchStateRef.current = {
+    isOpen: isSearchOpen && mode === 'source',
+    query: searchQuery,
+    matches: mode === 'source' ? matches : [],
+    activeIndex: activeMatchIndex
+  }
+
+  const cmExtensions = useMemo(() => {
+    const searchHighlightPlugin = ViewPlugin.fromClass(
+      class {
+        decorations: CmDecorationSet
+        constructor(view: EditorView) {
+          this.decorations = this.buildDecorations(view)
+        }
+        update(update: ViewUpdate) {
+          this.decorations = this.buildDecorations(update.view)
+        }
+        buildDecorations(view: EditorView): CmDecorationSet {
+          const state = cmSearchStateRef.current
+          if (!state.isOpen || !state.query || state.matches.length === 0) {
+            return CmDecoration.none
+          }
+          const docLen = view.state.doc.length
+          const decos = []
+          for (let i = 0; i < state.matches.length; i++) {
+            const m = state.matches[i]!
+            if (m.from >= 0 && m.to <= docLen && m.from < m.to) {
+              decos.push(
+                CmDecoration.mark({
+                  class: 'rich-markdown-search-match',
+                  attributes:
+                    i === state.activeIndex ? { 'data-active': 'true' } : undefined
+                }).range(m.from, m.to)
+              )
+            }
+          }
+          return CmDecoration.set(decos, true)
+        }
+      },
+      {
+        decorations: (v) => v.decorations
+      }
+    )
+
+    return [
       markdown({ base: markdownLanguage, codeLanguages: languages }),
-      EditorView.lineWrapping
-    ],
-    []
+      EditorView.lineWrapping,
+      searchHighlightPlugin
+    ]
+  }, [])
+
+  const searchBarElement = (
+    <RichMarkdownSearchBar
+      activeMatchIndex={activeMatchIndex}
+      isOpen={isSearchOpen}
+      isReplaceMode={isReplaceMode}
+      matchCase={matchCase}
+      matchCount={matchCount}
+      query={searchQuery}
+      replaceQuery={replaceQuery}
+      replaceDisabled={readOnly}
+      placeholder="Buscar no editor visual"
+      searchInputRef={searchInputRef}
+      wholeWord={wholeWord}
+      onClose={closeSearch}
+      onMoveToMatch={moveToMatch}
+      onQueryChange={(val) => {
+        setSearchQuery(val)
+        setRawActiveMatchIndex(0)
+        setNavigationTrigger((n) => n + 1)
+      }}
+      onReplaceAll={replaceAllMatches}
+      onReplaceCurrent={replaceCurrentMatch}
+      onReplaceQueryChange={setReplaceQuery}
+      onToggleMatchCase={() => {
+        setMatchCase((v) => !v)
+        setNavigationTrigger((n) => n + 1)
+      }}
+      onToggleReplaceMode={() => setIsReplaceMode((v) => !v)}
+      onToggleWholeWord={() => {
+        setWholeWord((v) => !v)
+        setNavigationTrigger((n) => n + 1)
+      }}
+    />
   )
 
   if (mode === 'source') {
     return (
-      <div className="flex h-full min-h-0 flex-1 flex-col bg-editor-surface">
+      <div
+        ref={rootRef}
+        className="flex h-full min-h-0 flex-1 flex-col bg-editor-surface"
+      >
         <div className="flex items-center justify-between border-b border-border/60 bg-background/60 px-4 py-1.5 text-[11px] text-muted-foreground font-mono">
           <span>MODO SOURCE (MARKDOWN CRU — CODEMIRROR 6)</span>
           <span>{formatFullDateTime(createdAt)}</span>
         </div>
-        <div className="min-h-0 flex-1 overflow-auto text-sm">
+        <div className="relative min-h-0 flex-1 overflow-hidden text-sm">
           <CodeMirror
             value={content}
             height="100%"
             theme={isDark ? oneDark : 'light'}
             extensions={cmExtensions}
             editable={!readOnly}
+            onCreateEditor={(view) => {
+              cmViewRef.current = view
+            }}
             onChange={(val) => {
               lastCommittedRef.current = val
               onContentChangeRef.current(val)
@@ -554,11 +988,13 @@ export function RichMarkdownEditor({
               lineNumbers: true,
               foldGutter: true,
               highlightActiveLine: true,
-              bracketMatching: true
+              bracketMatching: true,
+              searchKeymap: false
             }}
-            className="h-full font-mono"
+            className="rys-codemirror-host h-full font-mono"
             style={{ fontSize: `${13.5 * (zoomPercent / 100)}px` }}
           />
+          {searchBarElement}
         </div>
       </div>
     )
@@ -599,45 +1035,50 @@ export function RichMarkdownEditor({
             }
           }}
         />
-        <div
-          ref={scrollContainerRef}
-          onScroll={() => updateThickCaret(editor)}
-          className="relative min-h-0 flex-1 overflow-auto scrollbar-sleek"
-          onMouseDown={(event) => {
-            if (!editor?.isEmpty || event.button !== 0) return
-            const target = event.target
-            if (
-              target instanceof Element &&
-              !target.closest('.rich-markdown-editor-shell button, .rich-markdown-editor-shell input')
-            ) {
-              event.preventDefault()
-              editor.commands.focus('start')
-            }
-          }}
-        >
-          {/* Data completa de criação no topo da nota (estilo Apple Notes do Mac) */}
+        <div className="relative min-h-0 flex-1 flex flex-col overflow-hidden">
           <div
-            className="pt-4 pb-1 text-center font-medium text-muted-foreground/80 select-none"
-            style={{ fontSize: 'calc(12px * var(--rys-editor-zoom, 1))' }}
+            ref={scrollContainerRef}
+            onScroll={() => updateThickCaret(editor)}
+            className="relative min-h-0 flex-1 overflow-auto scrollbar-sleek"
+            onMouseDown={(event) => {
+              if (!editor?.isEmpty || event.button !== 0) return
+              const target = event.target
+              if (
+                target instanceof Element &&
+                !target.closest(
+                  '.rich-markdown-editor-shell button, .rich-markdown-editor-shell input'
+                )
+              ) {
+                event.preventDefault()
+                editor.commands.focus('start')
+              }
+            }}
           >
-            {formatFullDateTime(createdAt)}
-          </div>
-
-          <RichMarkdownTableControls editor={editor} />
-          <EditorContent editor={editor} />
-
-          {/* Cursor "gordinho" que pisca na mesma cor da acentuação */}
-          {thickCaret && !readOnly && (
+            {/* Data completa de criação no topo da nota (estilo Apple Notes do Mac) */}
             <div
-              aria-hidden="true"
-              className={cn('rys-thick-caret', isTyping && 'is-typing')}
-              style={{
-                top: `${thickCaret.top}px`,
-                left: `${thickCaret.left}px`,
-                height: `${thickCaret.height}px`
-              }}
-            />
-          )}
+              className="pt-4 pb-1 text-center font-medium text-muted-foreground/80 select-none"
+              style={{ fontSize: 'calc(12px * var(--rys-editor-zoom, 1))' }}
+            >
+              {formatFullDateTime(createdAt)}
+            </div>
+
+            <RichMarkdownTableControls editor={editor} />
+            <EditorContent editor={editor} />
+
+            {/* Cursor "gordinho" que pisca na mesma cor da acentuação */}
+            {thickCaret && !readOnly && (
+              <div
+                aria-hidden="true"
+                className={cn('rys-thick-caret', isTyping && 'is-typing')}
+                style={{
+                  top: `${thickCaret.top}px`,
+                  left: `${thickCaret.left}px`,
+                  height: `${thickCaret.height}px`
+                }}
+              />
+            )}
+          </div>
+          {searchBarElement}
         </div>
 
         {linkBubble && (

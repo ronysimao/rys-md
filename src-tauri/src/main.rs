@@ -685,6 +685,30 @@ fn reveal_in_folder(
     Ok(())
 }
 
+#[tauri::command]
+fn window_action(window: tauri::Window, action: String) -> Result<serde_json::Value, String> {
+    match action.as_str() {
+        "minimize" => {
+            let _ = window.minimize();
+        }
+        "maximize" => {
+            if window.is_maximized().unwrap_or(false) {
+                let _ = window.unmaximize();
+            } else {
+                let _ = window.maximize();
+            }
+        }
+        "close" => {
+            let _ = window.close();
+        }
+        "drag" => {
+            let _ = window.start_dragging();
+        }
+        _ => {}
+    }
+    Ok(serde_json::json!({ "ok": true }))
+}
+
 fn main() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
@@ -699,7 +723,8 @@ fn main() {
             delete_folder,
             save_asset,
             read_asset_base64,
-            reveal_in_folder
+            reveal_in_folder,
+            window_action
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
