@@ -192,25 +192,12 @@ export function AppleSidebar({
       )}
     >
       <div className="flex h-full w-full min-w-[150px] flex-col">
-        {/* Header estilo Apple Notes: Controles de Janela + Botão Retrátil + Favicon + Rys MD */}
+        {/* Header estilo Apple Notes: Controles de Janela + Botão Retrátil */}
         <div className="flex h-12 items-center justify-between px-3.5 border-b border-border/50 shrink-0">
           <WindowTrafficLights
             onToggleSidebar={onToggleCollapse}
             sidebarCollapsed={collapsed}
           />
-
-          <div className="flex items-center gap-1.5">
-            <img
-              src="/icon.png?v=3"
-              alt="Rys MD Icon"
-              className="size-5 rounded-[4px] object-contain drop-shadow-xs"
-            />
-            <img
-              src="/Texto_Rys_MD.png?v=2"
-              alt="Rys MD"
-              className="h-5 w-auto object-contain drop-shadow-xs"
-            />
-          </div>
         </div>
 
         {/* Navegação Principal */}
