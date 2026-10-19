@@ -117,6 +117,11 @@ export function App(): React.JSX.Element {
   } | null>(null)
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false)
   const [isUpdating, setIsUpdating] = useState(false)
+  const [importNotice, setImportNotice] = useState<{
+    fileName: string
+    vaultPath: string
+  } | null>(null)
+  const importNoticeTimerRef = useRef<number | null>(null)
 
   const [isVaultModalOpen, setIsVaultModalOpen] = useState(false)
   const [vaultPathDraft, setVaultPathDraft] = useState('')
@@ -598,6 +603,37 @@ export function App(): React.JSX.Element {
     [vaultState, flushPendingSave]
   )
 
+  const showImportNotice = useCallback((fileName: string, vaultPath: string) => {
+    setImportNotice({ fileName, vaultPath })
+    if (importNoticeTimerRef.current) {
+      window.clearTimeout(importNoticeTimerRef.current)
+    }
+    importNoticeTimerRef.current = window.setTimeout(() => {
+      setImportNotice(null)
+    }, 8000)
+  }, [])
+
+  const handleOpenMarkdownFile = useCallback(async () => {
+    await flushPendingSave(true)
+    try {
+      const res = await vaultClient.openMarkdownFile({
+        vaultPath: customVaultPath
+      })
+      if (res.cancelled) return
+      if (res.state && res.importedRelativePath) {
+        setVaultState(res.state)
+        setActiveFilter({ kind: 'all' })
+        setSelectedNotePath(res.importedRelativePath)
+        showImportNotice(
+          res.fileName || res.importedRelativePath,
+          res.vaultPath || res.state.vaultPath
+        )
+      }
+    } catch (err) {
+      console.error('Erro ao abrir arquivo Markdown:', err)
+    }
+  }, [customVaultPath, flushPendingSave, showImportNotice])
+
   // Global keyboard shortcuts (Ctrl+K for daily.dev-inspired Global Search, Ctrl+N for new note, Ctrl+\ for focus mode)
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -794,6 +830,7 @@ export function App(): React.JSX.Element {
               setVaultPathDraft(vaultState.vaultPath)
               setIsVaultModalOpen(true)
             }}
+            onOpenMarkdownFile={() => void handleOpenMarkdownFile()}
             onOpenVersionModal={() => setIsVersionModalOpen(true)}
             onCheckOrPerformUpdate={() => void handleCheckOrPerformUpdate()}
           />
@@ -911,12 +948,6 @@ export function App(): React.JSX.Element {
               onTogglePin={() => void handleTogglePin(selectedNote.relativePath)}
               onTrashNote={() => void handleTrashNote(selectedNote.relativePath)}
               onRestoreNote={() => void handleRestoreNote(selectedNote.relativePath)}
-              onRevealInFolder={() =>
-                void vaultClient.revealInFolder({
-                  vaultPath: vaultState.vaultPath,
-                  relativePath: selectedNote.relativePath
-                })
-              }
               onOpenVersionModal={() => setIsVersionModalOpen(true)}
             />
             <div className="flex-1 min-h-0 overflow-hidden select-text">
@@ -940,6 +971,38 @@ export function App(): React.JSX.Element {
           <div className="flex-1 h-full" />
         )}
       </main>
+
+      {/* Aviso visual quando um arquivo .md externo é aberto e copiado para a pasta padrão */}
+      {importNotice && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-5 right-5 z-50 max-w-md rys-glass-popover rounded-2xl border border-primary/40 bg-background/90 px-4 py-3 shadow-2xl text-foreground animate-in fade-in slide-in-from-bottom-3 duration-200"
+        >
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
+              <FolderOpen className="size-4" />
+            </div>
+            <div className="min-w-0 flex-1 text-xs leading-relaxed">
+              <p className="font-semibold text-foreground">
+                Cópia criada na pasta padrão do Rys MD
+              </p>
+              <p className="mt-0.5 text-muted-foreground">
+                O arquivo <code className="font-semibold text-primary">{importNotice.fileName}</code> foi copiado para{' '}
+                <code className="text-foreground/90">{importNotice.vaultPath}</code> e aberto no editor.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setImportNotice(null)}
+              title="Fechar aviso"
+              className="rounded-lg p-1 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer shrink-0"
+            >
+              <X className="size-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Busca Global inspirada no daily.dev (Ctrl + K ou clique em 🔎️) */}
       {vaultState && (
@@ -992,9 +1055,14 @@ export function App(): React.JSX.Element {
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <p className="text-xs mb-4 leading-relaxed text-muted-foreground">
-              Todas as suas notas são gravadas como arquivos <code>.md</code> reais no Ubuntu. Informe o caminho da pasta desejada:
+            <p className="text-xs mb-2.5 leading-relaxed text-muted-foreground">
+              Todas as suas notas são gravadas como arquivos <code>.md</code> reais no sistema. Informe o caminho da pasta padrão desejada:
             </p>
+            <div className="mb-4 rounded-xl border border-primary/25 bg-primary/10 px-3 py-2 text-[11.5px] leading-relaxed text-muted-foreground">
+              <strong className="text-foreground">Nota sobre Abrir arquivo:</strong> Ao clicar em{' '}
+              <span className="font-semibold text-primary">Abrir arquivo</span> (ao lado de{' '}
+              <code>NOTAS LOCAIS</code>), uma cópia do arquivo <code>.md</code> selecionado será criada automaticamente nesta pasta padrão e aberta na interface do Rys MD.
+            </div>
             <form onSubmit={handleConfirmVaultPath} className="space-y-4">
               <input
                 type="text"

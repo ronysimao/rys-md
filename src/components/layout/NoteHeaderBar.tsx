@@ -5,7 +5,6 @@ import {
   Copy,
   FileCode2,
   FileDown,
-  FolderOpen,
   ListTree,
   Maximize2,
   Minimize2,
@@ -34,7 +33,6 @@ interface NoteHeaderBarProps {
   onTogglePin: () => void
   onTrashNote: () => void
   onRestoreNote: () => void
-  onRevealInFolder: () => void
   onOpenVersionModal?: () => void
 }
 
@@ -51,7 +49,6 @@ export function NoteHeaderBar({
   onTogglePin,
   onTrashNote,
   onRestoreNote,
-  onRevealInFolder,
   onOpenVersionModal
 }: NoteHeaderBarProps): React.JSX.Element {
   const [copiedType, setCopiedType] = useState<'md' | 'html' | null>(null)
@@ -271,16 +268,6 @@ export function NoteHeaderBar({
             <FileCode2 className="size-3.5" />
           )}
           <span className="hidden lg:inline">HTML</span>
-        </button>
-
-        {/* Abrir no Nautilus */}
-        <button
-          type="button"
-          onClick={onRevealInFolder}
-          title="Abrir arquivo na pasta do Ubuntu (Nautilus)"
-          className="inline-flex items-center justify-center rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
-        >
-          <FolderOpen className="size-3.5" />
         </button>
 
         {/* Exportar para PDF (A4 com tratamento de quebra de página e modal nativo) */}

@@ -652,6 +652,116 @@ fn handle_api_post(pathname: &str, body: &serde_json::Value) -> Result<serde_jso
             let _ = Command::new("xdg-open").arg(target).spawn();
             Ok(serde_json::json!({ "ok": true }))
         }
+        "/api/vault/open-markdown-file" => {
+            let picker_script = r#"
+import sys, os
+try:
+    import gi
+    gi.require_version('Gtk', '3.0')
+    from gi.repository import Gtk
+    dialog = Gtk.FileChooserDialog(
+        title='Abrir arquivo Markdown — Rys MD',
+        parent=None,
+        action=Gtk.FileChooserAction.OPEN
+    )
+    dialog.add_buttons(
+        Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
+        Gtk.STOCK_OPEN, Gtk.ResponseType.ACCEPT
+    )
+    docs_dir = os.path.expanduser('~/Documentos')
+    if not os.path.isdir(docs_dir):
+        docs_dir = os.path.expanduser('~')
+    dialog.set_current_folder(docs_dir)
+
+    info_label = Gtk.Label(
+        label='ℹ️ Ao abrir um arquivo .md, uma cópia será criada automaticamente na sua pasta padrão do Rys MD.'
+    )
+    info_label.set_margin_top(6)
+    info_label.set_margin_bottom(6)
+    info_label.show()
+    dialog.set_extra_widget(info_label)
+
+    md_filter = Gtk.FileFilter()
+    md_filter.set_name('Arquivos Markdown (*.md, *.markdown, *.txt)')
+    md_filter.add_pattern('*.md')
+    md_filter.add_pattern('*.MD')
+    md_filter.add_pattern('*.markdown')
+    md_filter.add_pattern('*.txt')
+    dialog.add_filter(md_filter)
+
+    all_filter = Gtk.FileFilter()
+    all_filter.set_name('Todos os arquivos (*)')
+    all_filter.add_pattern('*')
+    dialog.add_filter(all_filter)
+
+    res = dialog.run()
+    chosen = dialog.get_filename() if res == Gtk.ResponseType.ACCEPT else ''
+    dialog.destroy()
+    while Gtk.events_pending():
+        Gtk.main_iteration()
+    if chosen:
+        print(chosen)
+except Exception:
+    pass
+"#;
+            let output = Command::new("/usr/bin/python3")
+                .arg("-c")
+                .arg(picker_script)
+                .output()
+                .map_err(|e| e.to_string())?;
+            let chosen_path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            if chosen_path.is_empty() {
+                return Ok(serde_json::json!({ "cancelled": true }));
+            }
+
+            let src_path = PathBuf::from(&chosen_path);
+            let raw_bytes = fs::read(&src_path).map_err(|e| e.to_string())?;
+            let file_content = String::from_utf8_lossy(&raw_bytes).to_string();
+
+            let raw_stem = src_path
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("Nota Importada");
+            let safe_stem = sanitize_filename(raw_stem);
+
+            // Sempre cria uma cópia na pasta padrão do cofre (evitando sobrescrever notas existentes)
+            let mut candidate_rel = format!("{safe_stem}.md");
+            let mut counter = 1usize;
+            while dir.join(&candidate_rel).exists() {
+                if counter == 1 {
+                    candidate_rel = format!("{safe_stem} (Cópia).md");
+                } else {
+                    candidate_rel = format!("{safe_stem} (Cópia {counter}).md");
+                }
+                counter += 1;
+            }
+
+            fs::write(dir.join(&candidate_rel), &file_content).map_err(|e| e.to_string())?;
+
+            let mut idx = read_index(&dir);
+            let now = now_millis();
+            idx.notes.insert(
+                candidate_rel.clone(),
+                NoteMetaEntry {
+                    id: Some(format!("note-{now}")),
+                    pinned: false,
+                    created_at: Some(now),
+                    updated_at: Some(now),
+                    original_folder: None,
+                },
+            );
+            write_index(&dir, &idx);
+
+            let state = build_vault_state(&dir)?;
+            Ok(serde_json::json!({
+                "cancelled": false,
+                "importedRelativePath": candidate_rel,
+                "fileName": candidate_rel,
+                "vaultPath": state.vault_path,
+                "copied": true,
+                "state": state
+            }))
+        }
         "/api/vault/open-external-url" => {
             if let Some(url) = body.get("url").and_then(|v| v.as_str()) {
                 let _ = Command::new("xdg-open").arg(url).spawn();
@@ -822,7 +932,7 @@ Gtk.main()
             let current_version = body
                 .get("currentVersion")
                 .and_then(|v| v.as_str())
-                .unwrap_or("0.7.0");
+                .unwrap_or("0.8.0");
             let check_script = r#"
 import sys, json, urllib.request
 
@@ -894,12 +1004,24 @@ except Exception:
                 .filter(|s| Path::new(s).exists())
                 .unwrap_or_else(|| "/usr/bin/rys-md".to_string());
 
-            let updater_py = r#"
+            let updater_py = r#"#!/usr/bin/env python3
 import sys, os, json, time, signal, subprocess, urllib.request
 
-download_url = sys.argv[1]
-old_pid = int(sys.argv[2])
-exe_path = sys.argv[3]
+download_url = sys.argv[1] if len(sys.argv) > 1 else ''
+old_pid = int(sys.argv[2]) if len(sys.argv) > 2 else 0
+exe_path = sys.argv[3] if len(sys.argv) > 3 else '/usr/bin/rys-md'
+
+# Detach completely from old_pid via double-fork + setsid so killing old_pid or its children never kills the updater
+try:
+    if os.fork() > 0:
+        os._exit(0)
+    os.setsid()
+    if os.fork() > 0:
+        os._exit(0)
+except Exception:
+    pass
+
+my_pid = os.getpid()
 
 if not download_url:
     try:
@@ -931,42 +1053,71 @@ if os.path.isfile(deb_path):
 if not installed_ok:
     sys.exit(0)
 
-# 1. Kill all child processes of old_pid (including the GTK_WEBKIT python3 window)
-subprocess.run(['pkill', '-TERM', '-P', str(old_pid)], stderr=subprocess.DEVNULL)
-
-# 2. Kill any lingering GTK_WEBKIT python3 window or previous rys-md instance
-my_pid = os.getpid()
 try:
-    out = subprocess.check_output(['pgrep', '-f', 'GLib.set_prgname..rys-md..'], text=True)
-    for line in out.splitlines():
-        p = int(line.strip())
-        if p != my_pid:
-            try: os.kill(p, signal.SIGTERM)
-            except Exception: pass
+    os.remove(deb_path)
 except Exception:
     pass
 
-try:
-    os.kill(old_pid, signal.SIGTERM)
-except Exception:
-    pass
+def find_old_rys_pids():
+    pids = set()
+    if old_pid > 0 and old_pid != my_pid:
+        pids.add(old_pid)
+    marker = 'GLib.set_' + 'prgname'
+    for entry in os.listdir('/proc'):
+        if not entry.isdigit():
+            continue
+        p = int(entry)
+        if p == my_pid:
+            continue
+        try:
+            comm = open(f'/proc/{p}/comm', 'r', errors='ignore').read().strip()
+            cmdline = open(f'/proc/{p}/cmdline', 'rb').read().decode('utf-8', 'ignore')
+            if 'rys-md-updater' in cmdline:
+                continue
+            if comm in ('rys-md', 'rys-md-desktop'):
+                pids.add(p)
+            elif marker in cmdline and 'rys-md' in cmdline:
+                pids.add(p)
+        except Exception:
+            pass
+    return pids
+
+# 1. Gracefully terminate old instance and its GTK window
+for p in find_old_rys_pids():
+    try:
+        os.kill(p, signal.SIGTERM)
+    except Exception:
+        pass
 
 time.sleep(0.45)
 
-# Force SIGKILL if any old window or server is still alive
-subprocess.run(['pkill', '-KILL', '-P', str(old_pid)], stderr=subprocess.DEVNULL)
-try:
-    os.kill(old_pid, signal.SIGKILL)
-except Exception:
-    pass
+# 2. Force kill if any old window or server is still alive
+for p in find_old_rys_pids():
+    try:
+        os.kill(p, signal.SIGKILL)
+    except Exception:
+        pass
 
 time.sleep(0.25)
+
+# 3. Relaunch the newly installed Rys MD with full user desktop environment
 target_bin = '/usr/bin/rys-md' if os.path.isfile('/usr/bin/rys-md') else exe_path
-subprocess.Popen([target_bin], start_new_session=True)
+env = os.environ.copy()
+with open('/dev/null', 'rb') as devnull_in, open('/dev/null', 'ab') as devnull_out:
+    subprocess.Popen(
+        [target_bin],
+        stdin=devnull_in,
+        stdout=devnull_out,
+        stderr=devnull_out,
+        start_new_session=True,
+        close_fds=True,
+        env=env
+    )
 "#;
+            let script_path = PathBuf::from("/tmp/rys-md-updater.py");
+            let _ = fs::write(&script_path, updater_py);
             let _ = Command::new("/usr/bin/python3")
-                .arg("-c")
-                .arg(updater_py)
+                .arg(&script_path)
                 .arg(&download_url)
                 .arg(pid.to_string())
                 .arg(&exe_path)
@@ -1277,51 +1428,50 @@ fn spawn_app_window(url: &str) {
 }
 
 fn ensure_single_instance() {
-    let my_pid = std::process::id().to_string();
-    let cleanup_py = r#"
-import sys, os, signal, subprocess, time
+    let my_pid = std::process::id();
+    let mut killed_any = false;
+    let gtk_marker = format!("{}{}", "GLib.set_", "prgname('rys-md')");
 
-my_pid = int(sys.argv[1])
-killed_any = False
+    if let Ok(entries) = fs::read_dir("/proc") {
+        for entry in entries.flatten() {
+            let fname = entry.file_name();
+            let Some(pid_str) = fname.to_str() else {
+                continue;
+            };
+            let Ok(pid) = pid_str.parse::<u32>() else {
+                continue;
+            };
+            if pid == my_pid {
+                continue;
+            }
+            let proc_dir = entry.path();
+            let comm = fs::read_to_string(proc_dir.join("comm"))
+                .unwrap_or_default()
+                .trim()
+                .to_string();
+            let cmdline_bytes = fs::read(proc_dir.join("cmdline")).unwrap_or_default();
+            let cmdline = String::from_utf8_lossy(&cmdline_bytes);
 
-# 1. Close any existing GTK_WEBKIT python3 window of Rys MD
-try:
-    out = subprocess.check_output(['pgrep', '-f', 'GLib.set_prgname..rys-md..'], text=True)
-    for line in out.splitlines():
-        p = int(line.strip())
-        if p != my_pid and p != os.getpid():
-            try:
-                os.kill(p, signal.SIGTERM)
-                killed_any = True
-            except Exception:
-                pass
-except Exception:
-    pass
+            if cmdline.contains("rys-md-updater") || cmdline.contains("rys-md-postinst") {
+                continue;
+            }
 
-# 2. Close any other rys-md / rys-md-desktop server process
-for proc_name in ('rys-md', 'rys-md-desktop'):
-    try:
-        out = subprocess.check_output(['pgrep', '-x', proc_name], text=True)
-        for line in out.splitlines():
-            p = int(line.strip())
-            if p != my_pid and p != os.getpid():
-                try:
-                    subprocess.run(['pkill', '-TERM', '-P', str(p)], stderr=subprocess.DEVNULL)
-                    os.kill(p, signal.SIGTERM)
-                    killed_any = True
-                except Exception:
-                    pass
-    except Exception:
-        pass
+            let is_other_server = comm == "rys-md" || comm == "rys-md-desktop";
+            let is_old_gtk_win = comm.starts_with("python") && cmdline.contains(&gtk_marker);
 
-if killed_any:
-    time.sleep(0.25)
-"#;
-    let _ = Command::new("/usr/bin/python3")
-        .arg("-c")
-        .arg(cleanup_py)
-        .arg(&my_pid)
-        .status();
+            if is_other_server || is_old_gtk_win {
+                let _ = Command::new("/bin/kill")
+                    .arg("-TERM")
+                    .arg(pid.to_string())
+                    .status();
+                killed_any = true;
+            }
+        }
+    }
+
+    if killed_any {
+        std::thread::sleep(std::time::Duration::from_millis(250));
+    }
 }
 
 fn main() {

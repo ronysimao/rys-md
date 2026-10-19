@@ -686,6 +686,137 @@ fn reveal_in_folder(
 }
 
 #[tauri::command]
+fn open_markdown_file(vault_path: Option<String>) -> Result<serde_json::Value, String> {
+    let dir = resolve_vault_dir(vault_path);
+
+    #[cfg(target_os = "linux")]
+    let chosen_path = {
+        let picker_script = r#"
+import sys, os
+try:
+    import gi
+    gi.require_version('Gtk', '3.0')
+    from gi.repository import Gtk
+    dialog = Gtk.FileChooserDialog(
+        title='Abrir arquivo Markdown — Rys MD',
+        parent=None,
+        action=Gtk.FileChooserAction.OPEN
+    )
+    dialog.add_buttons(
+        Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
+        Gtk.STOCK_OPEN, Gtk.ResponseType.ACCEPT
+    )
+    docs_dir = os.path.expanduser('~/Documentos')
+    if not os.path.isdir(docs_dir):
+        docs_dir = os.path.expanduser('~')
+    dialog.set_current_folder(docs_dir)
+    info_label = Gtk.Label(
+        label='ℹ️ Ao abrir um arquivo .md, uma cópia será criada automaticamente na sua pasta padrão do Rys MD.'
+    )
+    info_label.set_margin_top(6)
+    info_label.set_margin_bottom(6)
+    info_label.show()
+    dialog.set_extra_widget(info_label)
+    md_filter = Gtk.FileFilter()
+    md_filter.set_name('Arquivos Markdown (*.md, *.markdown, *.txt)')
+    md_filter.add_pattern('*.md')
+    md_filter.add_pattern('*.MD')
+    md_filter.add_pattern('*.markdown')
+    md_filter.add_pattern('*.txt')
+    dialog.add_filter(md_filter)
+    res = dialog.run()
+    chosen = dialog.get_filename() if res == Gtk.ResponseType.ACCEPT else ''
+    dialog.destroy()
+    while Gtk.events_pending():
+        Gtk.main_iteration()
+    if chosen:
+        print(chosen)
+except Exception:
+    pass
+"#;
+        let out = Command::new("/usr/bin/python3")
+            .arg("-c")
+            .arg(picker_script)
+            .output()
+            .map_err(|e| e.to_string())?;
+        String::from_utf8_lossy(&out.stdout).trim().to_string()
+    };
+
+    #[cfg(target_os = "macos")]
+    let chosen_path = {
+        let out = Command::new("osascript")
+            .args([
+                "-e",
+                "try\nPOSIX path of (choose file of type {\"md\", \"markdown\", \"txt\", \"public.plain-text\"} with prompt \"Selecione um arquivo Markdown (uma cópia será criada na pasta padrão do Rys MD):\")\nend try",
+            ])
+            .output()
+            .map_err(|e| e.to_string())?;
+        String::from_utf8_lossy(&out.stdout).trim().to_string()
+    };
+
+    #[cfg(target_os = "windows")]
+    let chosen_path = {
+        let ps_script = "Add-Type -AssemblyName System.Windows.Forms; $f = New-Object System.Windows.Forms.OpenFileDialog; $f.Title = 'Abrir arquivo Markdown (uma copia sera salva na pasta padrao do Rys MD)'; $f.Filter = 'Arquivos Markdown (*.md;*.markdown;*.txt)|*.md;*.markdown;*.txt|Todos os arquivos (*.*)|*.*'; if ($f.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { Write-Output $f.FileName }";
+        let out = Command::new("powershell")
+            .args(["-NoProfile", "-Command", ps_script])
+            .output()
+            .map_err(|e| e.to_string())?;
+        String::from_utf8_lossy(&out.stdout).trim().to_string()
+    };
+
+    if chosen_path.is_empty() {
+        return Ok(serde_json::json!({ "cancelled": true }));
+    }
+
+    let src_path = PathBuf::from(&chosen_path);
+    let raw_bytes = fs::read(&src_path).map_err(|e| e.to_string())?;
+    let file_content = String::from_utf8_lossy(&raw_bytes).to_string();
+
+    let raw_stem = src_path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("Nota Importada");
+    let safe_stem = sanitize_filename(raw_stem);
+
+    let mut candidate_rel = format!("{safe_stem}.md");
+    let mut counter = 1usize;
+    while dir.join(&candidate_rel).exists() {
+        if counter == 1 {
+            candidate_rel = format!("{safe_stem} (Cópia).md");
+        } else {
+            candidate_rel = format!("{safe_stem} (Cópia {counter}).md");
+        }
+        counter += 1;
+    }
+
+    fs::write(dir.join(&candidate_rel), &file_content).map_err(|e| e.to_string())?;
+
+    let mut index = read_index(&dir);
+    let now = now_millis();
+    index.notes.insert(
+        candidate_rel.clone(),
+        NoteMetaEntry {
+            id: Some(format!("note-{now}")),
+            pinned: false,
+            created_at: Some(now),
+            updated_at: Some(now),
+            original_folder: None,
+        },
+    );
+    write_index(&dir, &index);
+
+    let state = build_vault_state(&dir)?;
+    Ok(serde_json::json!({
+        "cancelled": false,
+        "importedRelativePath": candidate_rel,
+        "fileName": candidate_rel,
+        "vaultPath": state.vault_path,
+        "copied": true,
+        "state": state
+    }))
+}
+
+#[tauri::command]
 fn window_action(window: tauri::Window, action: String) -> Result<serde_json::Value, String> {
     match action.as_str() {
         "minimize" => {
@@ -761,6 +892,7 @@ fn main() {
             save_asset,
             read_asset_base64,
             reveal_in_folder,
+            open_markdown_file,
             open_external_url,
             open_os_emoji,
             window_action

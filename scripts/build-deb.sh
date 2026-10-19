@@ -6,7 +6,7 @@ export PATH="$HOME/.cargo/bin:$PATH"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
-VERSION="$(node -p "require('./package.json').version" 2>/dev/null || echo "0.7.0")"
+VERSION="$(node -p "require('./package.json').version" 2>/dev/null || echo "0.8.0")"
 ARCH="amd64"
 PKG_NAME="rys-md"
 DEB_DIR="$ROOT_DIR/release/${PKG_NAME}_${VERSION}_${ARCH}"
@@ -59,17 +59,137 @@ StartupNotify=false
 Keywords=notes;markdown;rys;editor;
 EOF
 
-# Create DEBIAN/prerm to automatically close any running instance from older versions before upgrading/removing
-cat > "$DEB_DIR/DEBIAN/prerm" << 'EOF'
+# Create DEBIAN/postinst to ensure clean auto-update relaunch even when upgrading from older versions (e.g. v0.7.0)
+cat > "$DEB_DIR/DEBIAN/postinst" << 'EOF'
 #!/bin/sh
 set -e
-# Terminate any running rys-md server and GTK3/WebKit2GTK window before replacing files
-pkill -f "GLib.set_prgname..rys-md.." 2>/dev/null || true
-pkill -x "rys-md" 2>/dev/null || true
-pkill -x "rys-md-desktop" 2>/dev/null || true
+rm -f /var/lib/dpkg/info/rys-md.prerm 2>/dev/null || true
+
+if [ -f /tmp/rys-md-auto-update.deb ]; then
+  cat > /tmp/rys-md-postinst.py << 'PYEOF'
+import os, sys, pwd, time, subprocess
+
+deb_path = '/tmp/rys-md-auto-update.deb'
+target_uid = None
+target_gid = None
+
+try:
+    st = os.stat(deb_path)
+    if st.st_uid > 0:
+        target_uid = st.st_uid
+        target_gid = st.st_gid
+except Exception:
+    pass
+
+if not target_uid:
+    for env_key in ('PKEXEC_UID', 'SUDO_UID'):
+        val = os.environ.get(env_key, '')
+        if val.isdigit() and int(val) > 0:
+            target_uid = int(val)
+            break
+
+if not target_uid:
+    sys.exit(0)
+
+try:
+    if os.fork() > 0:
+        os._exit(0)
+    os.setsid()
+    if os.fork() > 0:
+        os._exit(0)
+except Exception:
+    pass
+
+try:
+    pw = pwd.getpwuid(target_uid)
+    target_gid = target_gid or pw.pw_gid
+except Exception:
+    sys.exit(0)
+
+env = {
+    'HOME': pw.pw_dir,
+    'USER': pw.pw_name,
+    'LOGNAME': pw.pw_name,
+    'XDG_RUNTIME_DIR': f'/run/user/{target_uid}',
+    'PATH': '/usr/local/bin:/usr/bin:/bin'
+}
+
+for pid in os.listdir('/proc'):
+    if not pid.isdigit():
+        continue
+    try:
+        st = os.stat(f'/proc/{pid}')
+        if st.st_uid != target_uid:
+            continue
+        raw = open(f'/proc/{pid}/environ', 'rb').read().split(b'\0')
+        d = {}
+        for item in raw:
+            if b'=' in item:
+                k, v = item.decode('utf-8', 'ignore').split('=', 1)
+                d[k] = v
+        if 'DISPLAY' in d and ('DBUS_SESSION_BUS_ADDRESS' in d or 'WAYLAND_DISPLAY' in d):
+            for k in (
+                'DISPLAY',
+                'WAYLAND_DISPLAY',
+                'XAUTHORITY',
+                'XDG_RUNTIME_DIR',
+                'DBUS_SESSION_BUS_ADDRESS',
+                'XDG_CURRENT_DESKTOP',
+                'XDG_SESSION_TYPE',
+                'PATH'
+            ):
+                if k in d:
+                    env[k] = d[k]
+            break
+    except Exception:
+        pass
+
+try:
+    if os.geteuid() == 0:
+        os.setgid(target_gid)
+        os.initgroups(pw.pw_name, target_gid)
+        os.setuid(target_uid)
+except Exception:
+    pass
+
+# Wait 1.2s so if the modern updater script already launched /usr/bin/rys-md, we don't launch a second copy
+time.sleep(1.2)
+
+try:
+    if os.path.exists(deb_path):
+        os.remove(deb_path)
+except Exception:
+    pass
+
+already_running = False
+for pid in os.listdir('/proc'):
+    if not pid.isdigit():
+        continue
+    try:
+        comm = open(f'/proc/{pid}/comm', 'r', errors='ignore').read().strip()
+        if comm in ('rys-md', 'rys-md-desktop'):
+            already_running = True
+            break
+    except Exception:
+        pass
+
+if not already_running and os.path.isfile('/usr/bin/rys-md'):
+    with open('/dev/null', 'rb') as devnull_in, open('/dev/null', 'ab') as devnull_out:
+        subprocess.Popen(
+            ['/usr/bin/rys-md'],
+            stdin=devnull_in,
+            stdout=devnull_out,
+            stderr=devnull_out,
+            start_new_session=True,
+            close_fds=True,
+            env=env
+        )
+PYEOF
+  /usr/bin/python3 /tmp/rys-md-postinst.py >/dev/null 2>&1 || true
+fi
 exit 0
 EOF
-chmod 0755 "$DEB_DIR/DEBIAN/prerm"
+chmod 0755 "$DEB_DIR/DEBIAN/postinst"
 
 # Calculate installed size in KB
 INSTALLED_SIZE=$(du -sk "$DEB_DIR/usr" | cut -f1)

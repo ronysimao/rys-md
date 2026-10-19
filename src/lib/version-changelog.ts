@@ -1,4 +1,4 @@
-export const APP_VERSION = '0.7.0'
+export const APP_VERSION = '0.8.0'
 export const APP_REPO_URL = 'https://github.com/ronysimao/rys-md'
 export const APP_RELEASES_URL = 'https://github.com/ronysimao/rys-md/releases'
 export const APP_SITE_URL = 'https://md.rysdev.com'
@@ -11,6 +11,16 @@ export interface VersionReleaseEntry {
 }
 
 export const VERSION_CHANGELOG: VersionReleaseEntry[] = [
+  {
+    version: '0.8.0',
+    date: 'Outubro 2026',
+    title: 'Reabertura Automática no Auto-Update (Estilo Orca ADE) & Importação Nativa de Arquivos .md',
+    highlights: [
+      'Correção definitiva do Auto-Update: o processo atualizador agora desacopla sua sessão (double-fork + setsid) e coordena com o script postinst, encerrando a versão antiga e reabrindo automaticamente a nova versão do Rys MD na nota em que você estava.',
+      'Botão "Abrir arquivo" reposicionado ao lado do rótulo NOTAS LOCAIS na 1ª coluna, com tooltip simplificado ("Abrir arquivo").',
+      'Importação nativa de arquivos .md: ao clicar em "Abrir arquivo" e selecionar qualquer .md no modal nativo do sistema operacional, uma cópia é criada automaticamente na sua pasta padrão do Rys MD (~/Documentos/RYS MD), exibindo aviso informativo e abrindo a nota imediatamente na interface do aplicativo.'
+    ]
+  },
   {
     version: '0.7.0',
     date: 'Outubro 2026',

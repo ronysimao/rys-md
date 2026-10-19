@@ -115,7 +115,7 @@ Os binários pré-compilados para **Linux** (`.deb` e `.AppImage`), **Windows** 
 
 ### 1. Instalar o Pacote `.deb` no Ubuntu / Debian / Linux Mint
 ```bash
-sudo dpkg -i release/rys-md_0.7.0_amd64.deb
+sudo dpkg -i release/rys-md_0.8.0_amd64.deb
 ```
 Depois de instalado, basta abrir **Rys MD** pelo menu de aplicativos do sistema ou executar `rys-md` no terminal.
 
@@ -134,7 +134,7 @@ bun run dev
 ```bash
 bun run build:deb
 ```
-O pacote instalável será gerado automaticamente em `release/rys-md_0.7.0_amd64.deb`.
+O pacote instalável será gerado automaticamente em `release/rys-md_0.8.0_amd64.deb`.
 
 ---
 

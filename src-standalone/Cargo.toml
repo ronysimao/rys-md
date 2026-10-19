@@ -1,6 +1,6 @@
 [package]
 name = "rys-md-desktop"
-version = "0.7.0"
+version = "0.8.0"
 authors = ["ronysimao - RysDev <contato@rysdev.com>"]
 license = "MIT"
 edition = "2021"

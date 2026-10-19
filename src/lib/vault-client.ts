@@ -106,6 +106,19 @@ export const vaultClient = {
     await invokeOrFetch('reveal_in_folder', '/api/vault/reveal-in-folder', params)
   },
 
+  async openMarkdownFile(params: {
+    vaultPath?: string
+  } = {}): Promise<{
+    cancelled?: boolean
+    importedRelativePath?: string
+    fileName?: string
+    vaultPath?: string
+    copied?: boolean
+    state?: VaultState
+  }> {
+    return invokeOrFetch('open_markdown_file', '/api/vault/open-markdown-file', params)
+  },
+
   async exportPdf(params: {
     defaultFileName: string
     title: string

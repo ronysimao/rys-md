@@ -603,6 +603,71 @@ function rysVaultDevApiPlugin(): Plugin {
             return
           }
 
+          if (url.pathname === '/api/vault/open-markdown-file') {
+            const pickerCmd = `/usr/bin/python3 -c '
+import sys, os, gi
+gi.require_version("Gtk", "3.0")
+from gi.repository import Gtk
+d = Gtk.FileChooserDialog(title="Abrir arquivo Markdown — Rys MD", parent=None, action=Gtk.FileChooserAction.OPEN)
+d.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OPEN, Gtk.ResponseType.ACCEPT)
+docs = os.path.expanduser("~/Documentos")
+d.set_current_folder(docs if os.path.isdir(docs) else os.path.expanduser("~"))
+lbl = Gtk.Label(label="ℹ️ Ao abrir um arquivo .md, uma cópia será criada automaticamente na sua pasta padrão do Rys MD.")
+lbl.set_margin_top(6)
+lbl.set_margin_bottom(6)
+lbl.show()
+d.set_extra_widget(lbl)
+f = Gtk.FileFilter()
+f.set_name("Arquivos Markdown (*.md, *.markdown, *.txt)")
+f.add_pattern("*.md")
+f.add_pattern("*.MD")
+f.add_pattern("*.markdown")
+f.add_pattern("*.txt")
+d.add_filter(f)
+r = d.run()
+chosen = d.get_filename() if r == Gtk.ResponseType.ACCEPT else ""
+d.destroy()
+if chosen:
+    print(chosen)
+'`
+            const chosenPath = await new Promise<string>((resolve) => {
+              exec(pickerCmd, (_err, stdout) => resolve((stdout || '').trim()))
+            })
+            if (!chosenPath) {
+              res.end(JSON.stringify({ cancelled: true }))
+              return
+            }
+            const fileContent = await fs.readFile(chosenPath, 'utf8')
+            const rawStem = path.basename(chosenPath, path.extname(chosenPath)) || 'Nota Importada'
+            const safeStem = sanitizeFileName(rawStem)
+            let candidateRel = `${safeStem}.md`
+            let counter = 1
+            while (fsSync.existsSync(path.join(vaultPath, candidateRel))) {
+              candidateRel =
+                counter === 1
+                  ? `${safeStem} (Cópia).md`
+                  : `${safeStem} (Cópia ${counter}).md`
+              counter++
+            }
+            await fs.writeFile(path.join(vaultPath, candidateRel), fileContent, 'utf8')
+            const index = await readIndex(vaultPath)
+            const now = Date.now()
+            index.notes[candidateRel] = { pinned: false, createdAt: now, updatedAt: now }
+            await writeIndex(vaultPath, index)
+            const state = await scanVault(vaultPath)
+            res.end(
+              JSON.stringify({
+                cancelled: false,
+                importedRelativePath: candidateRel,
+                fileName: candidateRel,
+                vaultPath: state.vaultPath,
+                copied: true,
+                state
+              })
+            )
+            return
+          }
+
           if (url.pathname === '/api/vault/open-external-url') {
             const { url: targetUrl } = body
             if (targetUrl) {

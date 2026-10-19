@@ -53,6 +53,7 @@ interface AppleSidebarProps {
   onToggleTheme: () => void
   onChangeAccentColor: (color: AccentColor) => void
   onChangeVaultPath: () => void
+  onOpenMarkdownFile: () => void
   onOpenVersionModal: () => void
   onCheckOrPerformUpdate: () => void
 }
@@ -191,6 +192,7 @@ export function AppleSidebar({
   onToggleTheme,
   onChangeAccentColor,
   onChangeVaultPath,
+  onOpenMarkdownFile,
   onOpenVersionModal,
   onCheckOrPerformUpdate
 }: AppleSidebarProps): React.JSX.Element {
@@ -271,8 +273,19 @@ export function AppleSidebar({
         <div className="flex-1 overflow-y-auto px-2.5 py-3 space-y-5 scrollbar-sleek">
           {/* Seção Inteligente */}
           <div className="space-y-0.5">
-            <div className="px-2.5 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Notas Locais
+            <div className="flex items-center justify-between px-2.5 pb-1">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Notas Locais
+              </span>
+              <button
+                type="button"
+                onClick={onOpenMarkdownFile}
+                title="Abrir arquivo"
+                aria-label="Abrir arquivo"
+                className="inline-flex items-center justify-center rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-primary transition-colors cursor-pointer"
+              >
+                <FolderOpen className="size-3.5" />
+              </button>
             </div>
 
             {/* Todas as Notas */}
