@@ -6,7 +6,7 @@ export PATH="$HOME/.cargo/bin:$PATH"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
-VERSION="$(node -p "require('./package.json').version" 2>/dev/null || echo "0.6.0")"
+VERSION="$(node -p "require('./package.json').version" 2>/dev/null || echo "0.7.0")"
 ARCH="amd64"
 PKG_NAME="rys-md"
 DEB_DIR="$ROOT_DIR/release/${PKG_NAME}_${VERSION}_${ARCH}"
@@ -55,8 +55,21 @@ Terminal=false
 Type=Application
 Categories=Office;TextEditor;Utility;
 StartupWMClass=rys-md
+StartupNotify=false
 Keywords=notes;markdown;rys;editor;
 EOF
+
+# Create DEBIAN/prerm to automatically close any running instance from older versions before upgrading/removing
+cat > "$DEB_DIR/DEBIAN/prerm" << 'EOF'
+#!/bin/sh
+set -e
+# Terminate any running rys-md server and GTK3/WebKit2GTK window before replacing files
+pkill -f "GLib.set_prgname..rys-md.." 2>/dev/null || true
+pkill -x "rys-md" 2>/dev/null || true
+pkill -x "rys-md-desktop" 2>/dev/null || true
+exit 0
+EOF
+chmod 0755 "$DEB_DIR/DEBIAN/prerm"
 
 # Calculate installed size in KB
 INSTALLED_SIZE=$(du -sk "$DEB_DIR/usr" | cut -f1)

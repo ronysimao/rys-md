@@ -1,4 +1,4 @@
-export const APP_VERSION = '0.6.0'
+export const APP_VERSION = '0.7.0'
 export const APP_REPO_URL = 'https://github.com/ronysimao/rys-md'
 export const APP_RELEASES_URL = 'https://github.com/ronysimao/rys-md/releases'
 export const APP_SITE_URL = 'https://md.rysdev.com'
@@ -12,11 +12,21 @@ export interface VersionReleaseEntry {
 
 export const VERSION_CHANGELOG: VersionReleaseEntry[] = [
   {
+    version: '0.7.0',
+    date: 'Outubro 2026',
+    title: 'Barra de Busca Global Unificada na 3ª Coluna & Instância Única Garantida no Auto-Update (prerm + Startup Guard)',
+    highlights: [
+      'Barra de busca movida da 2ª coluna para o cabeçalho da 3ª coluna com ícone 🔎️ único, placeholder "Busca global" e atalho Ctrl+K integrado.',
+      'Remoção de termos técnicos ("Fuzzy Search") dos placeholders e rodapé da Busca Global.',
+      'Garantia de instância única no Linux: adição de script DEBIAN/prerm no pacote .deb e verificação ensure_single_instance() na inicialização do binário Rust, encerrando qualquer janela de versão anterior mesmo ao atualizar a partir de versões antigas.'
+    ]
+  },
+  {
     version: '0.6.0',
     date: 'Outubro 2026',
     title: 'Busca Global Estilo daily.dev (Ctrl + K / 🔎️), Estabilidade de Checklists em Toggle H3 & Auto-Update Limpo',
     highlights: [
-      'Nova Busca Global (Ctrl + K ou clique no ícone 🔎️) inspirada no daily.dev: escurece o fundo, exibe modal retangular centralizado no topo (~54% da tela) e realiza Fuzzy Search em tempo real em tags (#tag), títulos de notas, títulos de pastas e conteúdo completo das notas.',
+      'Nova Busca Global (Ctrl + K ou clique no ícone 🔎️) inspirada no daily.dev: escurece o fundo, exibe modal retangular centralizado no topo (~54% da tela) e realiza busca inteligente em tempo real em tags (#tag), títulos de notas, títulos de pastas e conteúdo completo das notas.',
       'Resultados da Busca Global organizados em 2 colunas (Esquerda: Local Encontrado | Direita: Conteúdo/Trecho), com navegação completa por teclado (↑/↓/Enter/Esc) e mouse com realce dinâmico na cor de acentuação.',
       'Correção definitiva do cursor em elementos Toggle (H1–H5): checklists extensos não pulam mais para fora do bloco retrátil durante a digitação.',
       'Encerramento atômico da janela anterior durante o Auto-Update (watchdog GTK + finalização da árvore de processos filhos antes de abrir a nova versão).'

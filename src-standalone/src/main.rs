@@ -822,7 +822,7 @@ Gtk.main()
             let current_version = body
                 .get("currentVersion")
                 .and_then(|v| v.as_str())
-                .unwrap_or("0.6.0");
+                .unwrap_or("0.7.0");
             let check_script = r#"
 import sys, json, urllib.request
 
@@ -1276,7 +1276,56 @@ fn spawn_app_window(url: &str) {
     });
 }
 
+fn ensure_single_instance() {
+    let my_pid = std::process::id().to_string();
+    let cleanup_py = r#"
+import sys, os, signal, subprocess, time
+
+my_pid = int(sys.argv[1])
+killed_any = False
+
+# 1. Close any existing GTK_WEBKIT python3 window of Rys MD
+try:
+    out = subprocess.check_output(['pgrep', '-f', 'GLib.set_prgname..rys-md..'], text=True)
+    for line in out.splitlines():
+        p = int(line.strip())
+        if p != my_pid and p != os.getpid():
+            try:
+                os.kill(p, signal.SIGTERM)
+                killed_any = True
+            except Exception:
+                pass
+except Exception:
+    pass
+
+# 2. Close any other rys-md / rys-md-desktop server process
+for proc_name in ('rys-md', 'rys-md-desktop'):
+    try:
+        out = subprocess.check_output(['pgrep', '-x', proc_name], text=True)
+        for line in out.splitlines():
+            p = int(line.strip())
+            if p != my_pid and p != os.getpid():
+                try:
+                    subprocess.run(['pkill', '-TERM', '-P', str(p)], stderr=subprocess.DEVNULL)
+                    os.kill(p, signal.SIGTERM)
+                    killed_any = True
+                except Exception:
+                    pass
+    except Exception:
+        pass
+
+if killed_any:
+    time.sleep(0.25)
+"#;
+    let _ = Command::new("/usr/bin/python3")
+        .arg("-c")
+        .arg(cleanup_py)
+        .arg(&my_pid)
+        .status();
+}
+
 fn main() {
+    ensure_single_instance();
     let dist_dir = find_dist_dir();
     let port = find_free_port();
     let addr = format!("127.0.0.1:{port}");

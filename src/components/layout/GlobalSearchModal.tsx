@@ -499,7 +499,7 @@ export function GlobalSearchModal({
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Busca Global (Fuzzy Search): pesquise por #tag, título de nota, pasta ou conteúdo..."
+            placeholder="Busca global: pesquise por #tag, título de nota, pasta ou conteúdo..."
             className="w-full bg-transparent text-sm font-medium text-foreground placeholder:text-muted-foreground/75 focus:outline-none"
           />
           {query && (
@@ -656,7 +656,7 @@ export function GlobalSearchModal({
             </span>
           </div>
           <span className="hidden sm:inline text-[10.5px] text-primary font-medium">
-            Busca Global Fuzzy • Ctrl + K
+            Busca Global • Ctrl + K
           </span>
         </div>
       </div>

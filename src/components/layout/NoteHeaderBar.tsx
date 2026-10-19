@@ -154,17 +154,25 @@ export function NoteHeaderBar({
         </div>
       </div>
 
-      {/* Direita: Busca Global (🔎️) + Toggle Rich/Source (Orca) + Table of Contents + Ações Rápidas */}
+      {/* Direita: Barra de Busca Global (movida da 2ª coluna) + Toggle Rich/Source (Orca) + Table of Contents + Ações Rápidas */}
       <div className="flex items-center gap-1.5 shrink-0">
-        {/* Botão Lupa de Busca Global (Ctrl + K) */}
+        {/* Barra de Busca Global com 🔎️ e placeholder "Busca global" (Ctrl + K) */}
         <button
           type="button"
           onClick={onOpenGlobalSearch}
-          title="Busca Global (Ctrl + K)"
-          aria-label="Busca Global (Ctrl + K)"
-          className="inline-flex items-center justify-center rounded-lg border border-border bg-muted/30 p-1.5 text-muted-foreground hover:bg-accent hover:text-primary transition-colors cursor-pointer"
+          title="Busca global (Ctrl + K)"
+          aria-label="Busca global (Ctrl + K)"
+          className="group relative flex h-7 w-40 sm:w-48 items-center justify-between gap-2 rounded-lg border border-border/75 bg-background/70 px-2.5 text-xs text-muted-foreground hover:border-primary/50 hover:bg-accent/60 hover:text-foreground transition-all cursor-pointer shrink-0"
         >
-          <Search className="size-3.5" />
+          <span className="flex items-center gap-1.5 min-w-0 truncate">
+            <Search className="size-3.5 shrink-0 text-muted-foreground group-hover:text-primary transition-colors" />
+            <span className="truncate text-muted-foreground/85 group-hover:text-foreground transition-colors">
+              Busca global
+            </span>
+          </span>
+          <kbd className="rounded border border-border/70 bg-muted/65 px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground group-hover:border-primary/40 group-hover:text-primary transition-colors shrink-0">
+            Ctrl+K
+          </kbd>
         </button>
 
         {/* Toggle Rich / Source estilo Orca ADE */}
