@@ -18,8 +18,67 @@ input[type='file'],
 }
 
 [role='separator'][aria-orientation='vertical'],
-.cursor-ew-resize {
+[role='separator'][aria-orientation='vertical'] *,
+.rys-column-resizer,
+.rys-column-resizer *,
+.cursor-ew-resize,
+.cursor-ew-resize *,
+.rys-edge-w,
+.rys-edge-e {
   cursor: ew-resize !important;
+}
+
+.rys-edge-n,
+.rys-edge-s {
+  cursor: ns-resize !important;
+}
+
+.rys-edge-nw,
+.rys-edge-se {
+  cursor: nwse-resize !important;
+}
+
+.rys-edge-ne,
+.rys-edge-sw {
+  cursor: nesw-resize !important;
+}
+
+/* ── Inline Hashtag (#<texto>) Visual Pill Effect (Accent Color) ── */
+.rys-inline-tag,
+.cm-content .rys-inline-tag {
+  display: inline-block;
+  padding: 0.05em 0.52em;
+  margin: 0 0.08em;
+  border-radius: 999px;
+  font-size: 0.9em;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--primary) !important;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.14) 0%,
+      color-mix(in srgb, var(--primary) 18%, transparent) 100%
+    ),
+    color-mix(in srgb, var(--primary) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--primary) 52%, transparent);
+  box-shadow:
+    0 0 10px color-mix(in srgb, var(--primary) 28%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    color 150ms ease;
+}
+
+.rys-inline-tag:hover,
+.cm-content .rys-inline-tag:hover {
+  background: color-mix(in srgb, var(--primary) 24%, transparent);
+  border-color: color-mix(in srgb, var(--primary) 72%, transparent);
+  box-shadow:
+    0 0 14px color-mix(in srgb, var(--primary) 42%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28);
 }
 
 /* ── Orca ADE Rich Markdown Editor Styles ─────────────────────── */

@@ -822,7 +822,7 @@ Gtk.main()
             let current_version = body
                 .get("currentVersion")
                 .and_then(|v| v.as_str())
-                .unwrap_or("0.4.0");
+                .unwrap_or("0.5.0");
             let check_script = r#"
 import sys, json, urllib.request
 
@@ -1066,19 +1066,60 @@ def get_resize_edge(w, x, y):
     alloc = w.get_allocation()
     width, height = alloc.width, alloc.height
     border = 6
+    corner = 12
     left = x < border
     right = x >= width - border
     top = y < border
     bottom = y >= height - border
-    if top and left: return Gdk.WindowEdge.NORTH_WEST
-    if top and right: return Gdk.WindowEdge.NORTH_EAST
-    if bottom and left: return Gdk.WindowEdge.SOUTH_WEST
-    if bottom and right: return Gdk.WindowEdge.SOUTH_EAST
+    if (y < corner and left) or (top and x < corner): return Gdk.WindowEdge.NORTH_WEST
+    if (y < corner and right) or (top and x >= width - corner): return Gdk.WindowEdge.NORTH_EAST
+    if (y >= height - corner and left) or (bottom and x < corner): return Gdk.WindowEdge.SOUTH_WEST
+    if (y >= height - corner and right) or (bottom and x >= width - corner): return Gdk.WindowEdge.SOUTH_EAST
     if left: return Gdk.WindowEdge.WEST
     if right: return Gdk.WindowEdge.EAST
     if top: return Gdk.WindowEdge.NORTH
     if bottom: return Gdk.WindowEdge.SOUTH
     return None
+
+EDGE_CURSORS = {
+    Gdk.WindowEdge.NORTH_WEST: 'nwse-resize',
+    Gdk.WindowEdge.SOUTH_EAST: 'nwse-resize',
+    Gdk.WindowEdge.NORTH_EAST: 'nesw-resize',
+    Gdk.WindowEdge.SOUTH_WEST: 'nesw-resize',
+    Gdk.WindowEdge.WEST: 'ew-resize',
+    Gdk.WindowEdge.EAST: 'ew-resize',
+    Gdk.WindowEdge.NORTH: 'ns-resize',
+    Gdk.WindowEdge.SOUTH: 'ns-resize',
+}
+
+last_edge_cursor = {'name': None}
+
+def update_edge_cursor(edge):
+    gdk_win = win.get_window()
+    if not gdk_win:
+        return
+    cursor_name = EDGE_CURSORS.get(edge) if (edge is not None and not win.is_maximized()) else None
+    if cursor_name == last_edge_cursor['name']:
+        return
+    last_edge_cursor['name'] = cursor_name
+    if cursor_name:
+        display = gdk_win.get_display()
+        cursor = Gdk.Cursor.new_from_name(display, cursor_name)
+        gdk_win.set_cursor(cursor)
+    else:
+        gdk_win.set_cursor(None)
+
+def on_motion_notify(widget, event):
+    if not win.is_maximized():
+        edge = get_resize_edge(win, event.x, event.y)
+        update_edge_cursor(edge)
+    else:
+        update_edge_cursor(None)
+    return False
+
+def on_leave_notify(widget, event):
+    update_edge_cursor(None)
+    return False
 
 def on_button_press(widget, event):
     if event.button == 1:
@@ -1093,6 +1134,9 @@ def on_button_press(widget, event):
                 return True
     return False
 
+wv.add_events(Gdk.EventMask.POINTER_MOTION_MASK | Gdk.EventMask.LEAVE_NOTIFY_MASK | Gdk.EventMask.BUTTON_PRESS_MASK)
+wv.connect('motion-notify-event', on_motion_notify)
+wv.connect('leave-notify-event', on_leave_notify)
 wv.connect('button-press-event', on_button_press)
 
 def on_permission_request(webview, request):

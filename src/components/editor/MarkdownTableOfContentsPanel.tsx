@@ -207,11 +207,13 @@ export function MarkdownTableOfContentsPanel({
           aria-orientation="vertical"
           title="Arraste para redimensionar o Sumário (menos de 150px oculta)"
           onMouseDown={onStartResize}
-          className="group relative z-30 -mx-1 w-2 shrink-0 cursor-ew-resize flex items-center justify-center select-none print:hidden"
+          style={{ cursor: 'ew-resize' }}
+          className="rys-column-resizer group relative z-40 -mx-1.5 w-3 shrink-0 cursor-ew-resize flex items-center justify-center select-none print:hidden"
         >
           <div
+            style={{ cursor: 'ew-resize' }}
             className={cn(
-              'h-full w-[2px] transition-colors',
+              'h-full w-[2px] cursor-ew-resize transition-colors',
               isResizing
                 ? 'bg-primary'
                 : 'bg-transparent group-hover:bg-primary/60'

@@ -697,13 +697,13 @@ export function App(): React.JSX.Element {
 
   return (
     <div
-      className="rys-app-backdrop flex h-screen w-screen overflow-hidden text-foreground select-none"
+      className="rys-app-backdrop relative flex h-screen w-screen overflow-hidden text-foreground select-none"
       onMouseDown={(e) => {
         if (e.button !== 0 || e.clientY > 52) return
         const target = e.target as HTMLElement | null
         if (
           target?.closest(
-            'button, a, input, textarea, select, [role="button"], [role="separator"]'
+            'button, a, input, textarea, select, [role="button"], [role="separator"], .rys-window-resize-edge'
           )
         ) {
           return
@@ -715,7 +715,7 @@ export function App(): React.JSX.Element {
         const target = e.target as HTMLElement | null
         if (
           target?.closest(
-            'button, a, input, textarea, select, [role="button"], [role="separator"]'
+            'button, a, input, textarea, select, [role="button"], [role="separator"], .rys-window-resize-edge'
           )
         ) {
           return
@@ -723,6 +723,40 @@ export function App(): React.JSX.Element {
         void handleWindowAction('maximize')
       }}
     >
+      {/* Bordas e cantos da janela com cursores de redimensionamento imediatos no hover */}
+      <div
+        aria-hidden="true"
+        className="rys-window-resize-edge rys-edge-n fixed top-0 left-3 right-3 h-1.5 z-50"
+      />
+      <div
+        aria-hidden="true"
+        className="rys-window-resize-edge rys-edge-s fixed bottom-0 left-3 right-3 h-1.5 z-50"
+      />
+      <div
+        aria-hidden="true"
+        className="rys-window-resize-edge rys-edge-w fixed left-0 top-3 bottom-3 w-1.5 z-50"
+      />
+      <div
+        aria-hidden="true"
+        className="rys-window-resize-edge rys-edge-e fixed right-0 top-3 bottom-3 w-1.5 z-50"
+      />
+      <div
+        aria-hidden="true"
+        className="rys-window-resize-edge rys-edge-nw fixed top-0 left-0 w-3 h-3 z-50"
+      />
+      <div
+        aria-hidden="true"
+        className="rys-window-resize-edge rys-edge-ne fixed top-0 right-0 w-3 h-3 z-50"
+      />
+      <div
+        aria-hidden="true"
+        className="rys-window-resize-edge rys-edge-sw fixed bottom-0 left-0 w-3 h-3 z-50"
+      />
+      <div
+        aria-hidden="true"
+        className="rys-window-resize-edge rys-edge-se fixed bottom-0 right-0 w-3 h-3 z-50"
+      />
+
       {/* Column 1: Left Sidebar (Retractable smoothly with Liquid Glass) */}
       {!focusMode && vaultState && (
         <>
@@ -766,10 +800,12 @@ export function App(): React.JSX.Element {
                 e.preventDefault()
                 setActiveResizer('col1')
               }}
-              className="group relative z-30 -mx-1 w-2 shrink-0 cursor-ew-resize flex items-center justify-center select-none"
+              style={{ cursor: 'ew-resize' }}
+              className="rys-column-resizer group relative z-40 -mx-1.5 w-3 shrink-0 cursor-ew-resize flex items-center justify-center select-none"
             >
               <div
-                className={`h-full w-[2px] transition-colors ${
+                style={{ cursor: 'ew-resize' }}
+                className={`h-full w-[2px] cursor-ew-resize transition-colors ${
                   activeResizer === 'col1'
                     ? 'bg-primary'
                     : 'bg-transparent group-hover:bg-primary/60'
@@ -814,10 +850,12 @@ export function App(): React.JSX.Element {
               e.preventDefault()
               setActiveResizer('col2')
             }}
-            className="group relative z-30 -mx-1 w-2 shrink-0 cursor-ew-resize flex items-center justify-center select-none"
+            style={{ cursor: 'ew-resize' }}
+            className="rys-column-resizer group relative z-40 -mx-1.5 w-3 shrink-0 cursor-ew-resize flex items-center justify-center select-none"
           >
             <div
-              className={`h-full w-[2px] transition-colors ${
+              style={{ cursor: 'ew-resize' }}
+              className={`h-full w-[2px] cursor-ew-resize transition-colors ${
                 activeResizer === 'col2'
                   ? 'bg-primary'
                   : 'bg-transparent group-hover:bg-primary/60'

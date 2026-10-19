@@ -1,4 +1,4 @@
-export const APP_VERSION = '0.4.0'
+export const APP_VERSION = '0.5.0'
 export const APP_REPO_URL = 'https://github.com/ronysimao/rys-md'
 export const APP_RELEASES_URL = 'https://github.com/ronysimao/rys-md/releases'
 export const APP_SITE_URL = 'https://md.rysdev.com'
@@ -11,6 +11,15 @@ export interface VersionReleaseEntry {
 }
 
 export const VERSION_CHANGELOG: VersionReleaseEntry[] = [
+  {
+    version: '0.5.0',
+    date: 'Outubro 2026',
+    title: 'Cursores de Redimensionamento Imediatos em Todas as Bordas & Efeito Visual de Tags (#tag)',
+    highlights: [
+      'Cursores nativos de redimensionamento (ew-resize, ns-resize, nwse-resize e nesw-resize) exibidos instantaneamente ao passar o mouse em todas as bordas/cantos da janela e divisórias de colunas antes do clique.',
+      'Efeito visual em formato de pílula/badge luminosa ao redor de qualquer TAG (#<texto>) escrita na nota (modos Rich e Source), acompanhando dinamicamente a cor de acentuação escolhida pelo usuário (Azul macOS ou Amarelo Clássico).'
+    ]
+  },
   {
     version: '0.4.0',
     date: 'Outubro 2026',

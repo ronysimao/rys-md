@@ -35,6 +35,11 @@ import {
   type RichMarkdownSearchMatch
 } from './rich-markdown-search'
 import {
+  createRichMarkdownHashtagPlugin,
+  findMarkdownSourceHashtagRanges,
+  richMarkdownHashtagPluginKey
+} from './rich-markdown-hashtags'
+import {
   filterRichMarkdownSlashCommands,
   runSlashCommand,
   slashCommands,
@@ -508,14 +513,17 @@ export function RichMarkdownEditor({
     [noteId]
   )
 
-  // Register Orca ADE search highlight plugin on TipTap editor
+  // Register Orca ADE search highlight plugin and inline hashtag badge plugin on TipTap editor
   useEffect(() => {
     if (!editor || editor.isDestroyed) return
-    const plugin = createRichMarkdownSearchPlugin()
-    editor.registerPlugin(plugin)
+    const searchPlugin = createRichMarkdownSearchPlugin()
+    const hashtagPlugin = createRichMarkdownHashtagPlugin()
+    editor.registerPlugin(searchPlugin)
+    editor.registerPlugin(hashtagPlugin)
     return () => {
       if (!editor.isDestroyed) {
         editor.unregisterPlugin(richMarkdownSearchPluginKey)
+        editor.unregisterPlugin(richMarkdownHashtagPluginKey)
       }
     }
   }, [editor])
@@ -963,9 +971,45 @@ export function RichMarkdownEditor({
       }
     )
 
+    const hashtagHighlightPlugin = ViewPlugin.fromClass(
+      class {
+        decorations: CmDecorationSet
+        constructor(view: EditorView) {
+          this.decorations = this.buildDecorations(view)
+        }
+        update(update: ViewUpdate) {
+          if (update.docChanged || update.viewportChanged) {
+            this.decorations = this.buildDecorations(update.view)
+          }
+        }
+        buildDecorations(view: EditorView): CmDecorationSet {
+          const docText = view.state.doc.toString()
+          const ranges = findMarkdownSourceHashtagRanges(docText)
+          if (ranges.length === 0) return CmDecoration.none
+          const docLen = view.state.doc.length
+          const decos = []
+          for (const r of ranges) {
+            if (r.from >= 0 && r.to <= docLen && r.from < r.to) {
+              decos.push(
+                CmDecoration.mark({
+                  class: 'rys-inline-tag',
+                  attributes: { 'data-tag': r.tag }
+                }).range(r.from, r.to)
+              )
+            }
+          }
+          return CmDecoration.set(decos, true)
+        }
+      },
+      {
+        decorations: (v) => v.decorations
+      }
+    )
+
     return [
       markdown({ base: markdownLanguage, codeLanguages: languages }),
       EditorView.lineWrapping,
+      hashtagHighlightPlugin,
       searchHighlightPlugin
     ]
   }, [])
