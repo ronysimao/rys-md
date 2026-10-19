@@ -1,4 +1,4 @@
-export const APP_VERSION = '0.8.0'
+export const APP_VERSION = '0.9.0'
 export const APP_REPO_URL = 'https://github.com/ronysimao/rys-md'
 export const APP_RELEASES_URL = 'https://github.com/ronysimao/rys-md/releases'
 export const APP_SITE_URL = 'https://md.rysdev.com'
@@ -11,6 +11,17 @@ export interface VersionReleaseEntry {
 }
 
 export const VERSION_CHANGELOG: VersionReleaseEntry[] = [
+  {
+    version: '0.9.0',
+    date: 'Outubro 2026',
+    title: 'macOS Universal (Sonoma & Versões Básicas 10.15+) + Windows PortableApps Edition',
+    highlights: [
+      'macOS Universal Binary (x86_64 Intel + arm64 Apple Silicon) com suporte estendido desde o macOS 10.15 Catalina até o macOS 14 Sonoma e 15 Sequoia.',
+      'Instalador automático de 1 linha para macOS Sonoma (scripts/install-macos.sh) e pacote com desbloqueador automático do Gatekeeper (xattr -cr + assinatura ad-hoc) para instalação sem bloqueios.',
+      'Edição Windows PortableApps (Rys-MD_0.9.0_Windows_x64_Portable.zip): roda direto de qualquer pasta ou pendrive sem necessidade de instalador ou privilégios de Administrador, com cofre portátil integrado (Rys MD Vault) e launcher anti-SmartScreen.',
+      'Paridade completa de comandos nativos (Exportar PDF A4, Abrir arquivo .md, Auto-Update e Seletor de Emojis) no motor multi-plataforma para macOS e Windows.'
+    ]
+  },
   {
     version: '0.8.0',
     date: 'Outubro 2026',

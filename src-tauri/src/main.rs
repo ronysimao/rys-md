@@ -100,6 +100,20 @@ fn resolve_vault_dir(vault_path: Option<String>) -> PathBuf {
             return PathBuf::from(trimmed);
         }
     }
+
+    // Modo PortableApps (Windows / Pendrive / Pasta Portátil):
+    // Se existir a pasta "Rys MD Vault" ou o marcador "portable.txt" ao lado do executável,
+    // grava todas as notas localmente dentro da própria pasta portátil.
+    if let Ok(exe_path) = std::env::current_exe() {
+        if let Some(exe_dir) = exe_path.parent() {
+            let portable_vault = exe_dir.join("Rys MD Vault");
+            let portable_marker = exe_dir.join("portable.txt");
+            if portable_vault.is_dir() || portable_marker.is_file() {
+                return portable_vault;
+            }
+        }
+    }
+
     let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
     let doc_pt = home.join("Documentos");
     if doc_pt.exists() {
@@ -866,6 +880,14 @@ fn open_os_emoji() -> Result<serde_json::Value, String> {
             .spawn();
     }
 
+    #[cfg(target_os = "windows")]
+    {
+        let ps = "$wshell = New-Object -ComObject wscript.shell; $wshell.SendKeys('^{ESC}')";
+        let _ = Command::new("powershell")
+            .args(["-NoProfile", "-Command", ps])
+            .spawn();
+    }
+
     #[cfg(target_os = "linux")]
     {
         let _ = Command::new("sh")
@@ -875,6 +897,191 @@ fn open_os_emoji() -> Result<serde_json::Value, String> {
     }
 
     Ok(serde_json::json!({ "ok": true }))
+}
+
+#[tauri::command]
+fn export_pdf(
+    default_file_name: String,
+    _title: Option<String>,
+    html: String,
+) -> Result<serde_json::Value, String> {
+    let tmp_html = std::env::temp_dir().join("rys-md-export-a4.html");
+    fs::write(&tmp_html, &html).map_err(|e| e.to_string())?;
+
+    #[cfg(target_os = "macos")]
+    let chosen_path = {
+        let safe_name = default_file_name.replace('"', "");
+        let script = format!(
+            "try\nPOSIX path of (choose file name with prompt \"Exportar para PDF (A4):\" default name \"{safe_name}\")\nend try"
+        );
+        let out = Command::new("osascript")
+            .args(["-e", &script])
+            .output()
+            .map_err(|e| e.to_string())?;
+        let mut s = String::from_utf8_lossy(&out.stdout).trim().to_string();
+        if !s.is_empty() && !s.to_lowercase().ends_with(".pdf") {
+            s.push_str(".pdf");
+        }
+        s
+    };
+
+    #[cfg(target_os = "windows")]
+    let chosen_path = {
+        let safe_name = default_file_name.replace('\'', "");
+        let ps_script = format!(
+            "Add-Type -AssemblyName System.Windows.Forms; $f = New-Object System.Windows.Forms.SaveFileDialog; $f.Title = 'Exportar para PDF (A4)'; $f.FileName = '{safe_name}'; $f.Filter = 'Documento PDF (*.pdf)|*.pdf'; if ($f.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {{ Write-Output $f.FileName }}"
+        );
+        let out = Command::new("powershell")
+            .args(["-NoProfile", "-Command", &ps_script])
+            .output()
+            .map_err(|e| e.to_string())?;
+        String::from_utf8_lossy(&out.stdout).trim().to_string()
+    };
+
+    #[cfg(target_os = "linux")]
+    let chosen_path = {
+        let picker_script = r#"
+import sys, os
+try:
+    import gi
+    gi.require_version('Gtk', '3.0')
+    from gi.repository import Gtk
+    dialog = Gtk.FileChooserDialog(title='Exportar para PDF (A4)', parent=None, action=Gtk.FileChooserAction.SAVE)
+    dialog.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_SAVE, Gtk.ResponseType.ACCEPT)
+    dialog.set_do_overwrite_confirmation(True)
+    dialog.set_current_name(sys.argv[1])
+    res = dialog.run()
+    chosen = dialog.get_filename() if res == Gtk.ResponseType.ACCEPT else ''
+    dialog.destroy()
+    if chosen:
+        if not chosen.lower().endswith('.pdf'): chosen += '.pdf'
+        print(chosen)
+except Exception:
+    pass
+"#;
+        let out = Command::new("/usr/bin/python3")
+            .arg("-c")
+            .arg(picker_script)
+            .arg(&default_file_name)
+            .output()
+            .map_err(|e| e.to_string())?;
+        String::from_utf8_lossy(&out.stdout).trim().to_string()
+    };
+
+    if chosen_path.is_empty() {
+        return Ok(serde_json::json!({ "ok": false, "cancelled": true }));
+    }
+
+    #[cfg(target_os = "macos")]
+    let browsers = [
+        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+        "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser",
+        "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
+        "/Applications/Chromium.app/Contents/MacOS/Chromium",
+    ];
+
+    #[cfg(target_os = "windows")]
+    let browsers = [
+        r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+        r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
+        r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+        r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+        r"C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe",
+    ];
+
+    #[cfg(target_os = "linux")]
+    let browsers = [
+        "/usr/bin/google-chrome-stable",
+        "/usr/bin/google-chrome",
+        "/usr/bin/brave-browser",
+        "/usr/bin/microsoft-edge-stable",
+        "/usr/bin/chromium",
+        "/snap/bin/chromium",
+    ];
+
+    for bin in browsers {
+        if Path::new(bin).is_file() {
+            let status = Command::new(bin)
+                .arg("--headless")
+                .arg("--disable-gpu")
+                .arg("--no-pdf-header-footer")
+                .arg(format!("--print-to-pdf={chosen_path}"))
+                .arg(tmp_html.to_string_lossy().to_string())
+                .status();
+            if status.map(|s| s.success()).unwrap_or(false) && Path::new(&chosen_path).is_file() {
+                return Ok(serde_json::json!({ "ok": true, "savedPath": chosen_path }));
+            }
+        }
+    }
+
+    Err("Browser PDF engine unavailable; fallback to window.print()".to_string())
+}
+
+#[tauri::command]
+fn check_update(_current_version: String) -> Result<serde_json::Value, String> {
+    // Throw so vault-client.ts uses its built-in cross-platform fetch() against GitHub Releases API
+    Err("use_js_github_fetch".to_string())
+}
+
+#[tauri::command]
+fn perform_update(
+    download_url: Option<String>,
+    _latest_version: Option<String>,
+) -> Result<serde_json::Value, String> {
+    #[cfg(target_os = "macos")]
+    {
+        let script = r#"#!/bin/bash
+set -e
+TAR_URL="https://github.com/ronysimao/rys-md/releases/latest/download/Rys-MD_macOS_Universal.app.tar.gz"
+TMP_DIR="$(mktemp -d)"
+curl -fsSL "$TAR_URL" -o "$TMP_DIR/rys-md.app.tar.gz"
+tar -xzf "$TMP_DIR/rys-md.app.tar.gz" -C "$TMP_DIR"
+rm -rf "/Applications/Rys MD.app"
+mv "$TMP_DIR/Rys MD.app" "/Applications/Rys MD.app"
+xattr -cr "/Applications/Rys MD.app" || true
+codesign --force --deep --sign - "/Applications/Rys MD.app" || true
+rm -rf "$TMP_DIR"
+killall "rys-md" "Rys MD" 2>/dev/null || true
+sleep 0.5
+open "/Applications/Rys MD.app"
+"#;
+        let script_path = std::env::temp_dir().join("rys-md-macos-updater.sh");
+        let _ = fs::write(&script_path, script);
+        let _ = Command::new("/bin/bash").arg(&script_path).spawn();
+        return Ok(serde_json::json!({ "ok": true }));
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        let current_exe = std::env::current_exe()
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or_default();
+        let pid = std::process::id();
+        let url = download_url.unwrap_or_else(|| {
+            "https://github.com/ronysimao/rys-md/releases/latest/download/Rys-MD_Windows_x64_Portable.exe".to_string()
+        });
+        let ps_updater = format!(
+            "Start-Sleep -Milliseconds 300; $tmp = Join-Path $env:TEMP 'Rys-MD-Update-Portable.exe'; Invoke-WebRequest -Uri '{url}' -OutFile $tmp -UseBasicParsing; Unblock-File -Path $tmp -ErrorAction SilentlyContinue; Stop-Process -Id {pid} -Force -ErrorAction SilentlyContinue; Start-Sleep -Milliseconds 700; Copy-Item -Path $tmp -Destination '{current_exe}' -Force; Unblock-File -Path '{current_exe}' -ErrorAction SilentlyContinue; Start-Process -FilePath '{current_exe}'"
+        );
+        let _ = Command::new("powershell")
+            .args([
+                "-NoProfile",
+                "-WindowStyle",
+                "Hidden",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-Command",
+                &ps_updater,
+            ])
+            .spawn();
+        return Ok(serde_json::json!({ "ok": true }));
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        let _ = download_url;
+        return Err("open_release_url".to_string());
+    }
 }
 
 fn main() {
@@ -893,6 +1100,9 @@ fn main() {
             read_asset_base64,
             reveal_in_folder,
             open_markdown_file,
+            export_pdf,
+            check_update,
+            perform_update,
             open_external_url,
             open_os_emoji,
             window_action

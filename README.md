@@ -109,17 +109,32 @@ Para isso, o **Rys MD** combina:
 
 ---
 
-## 📦 Instalação & Releases
+## 📦 Instalação & Releases (Linux, macOS & Windows Portable)
 
-Os binários pré-compilados para **Linux** (`.deb` e `.AppImage`), **Windows** (`.exe` Instalador, `.msi` e `.exe` Portátil) e **macOS** (`.dmg` e `.app.tar.gz`) ficam disponíveis na aba **[Releases](https://github.com/ronysimao/rys-md/releases)** do repositório.
+Os binários pré-compilados para **Linux** (`.deb` e `.AppImage`), **macOS Universal** (Intel + Apple Silicon, compatível do macOS 10.15 Catalina até o **macOS Sonoma / Sequoia**) e **Windows** (**Edição PortableApps** `.zip` / `.exe`, além de `.msi` e `setup.exe`) ficam disponíveis na aba **[Releases](https://github.com/ronysimao/rys-md/releases)** do repositório.
 
-### 1. Instalar o Pacote `.deb` no Ubuntu / Debian / Linux Mint
+### 1. 🍎 Instalar no macOS (Sonoma, Sequoia e versões a partir do 10.15 — Intel & Apple Silicon)
+Para instalar no Mac **sem ser barrado pelo Gatekeeper do macOS Sonoma** (já que o app é gratuito/open-source e usa assinatura *ad-hoc*), basta abrir o **Terminal** do Mac e colar este único comando:
 ```bash
-sudo dpkg -i release/rys-md_0.8.0_amd64.deb
+curl -fsSL https://raw.githubusercontent.com/ronysimao/rys-md/main/scripts/install-macos.sh | bash
+```
+> Esse comando baixa o binário **Universal (`x86_64` + `arm64`)**, instala em `/Applications/Rys MD.app`, remove automaticamente o atributo de quarentena do navegador (`xattr -cr`) e abre o aplicativo imediatamente!
+>
+> **Alternativa pelo navegador (`.zip` / `.dmg`)**: Baixe o arquivo `Rys-MD_0.9.0_macOS_Universal_Com_Instalador.zip` em [Releases](https://github.com/ronysimao/rys-md/releases), extraia e execute o script `Instalar Rys MD no Mac (Desbloquear Sonoma).command` (ou arraste o `Rys MD.app` para `/Applications` e rode `xattr -cr "/Applications/Rys MD.app"` no Terminal).
+
+### 2. 🪟 Usar no Windows — Edição PortableApps (Sem Instalador / Sem Bloqueio de Assinatura)
+1. Na página de [Releases](https://github.com/ronysimao/rys-md/releases), baixe **`Rys-MD_0.9.0_Windows_x64_Portable.zip`**.
+2. Extraia a pasta em qualquer lugar (Área de Trabalho, Documentos, Pendrive, OneDrive ou Dropbox).
+3. Dê dois cliques em **`Iniciar Rys MD Portable (Sem Bloqueio SmartScreen).bat`** (ele remove automaticamente o bloqueio *Zone.Identifier* de arquivos baixados da internet e abre o `Rys MD Portable.exe` sem pedir senha de Administrador!).
+4. Todas as suas notas ficam salvas dentro da própria subpasta `Rys MD Vault` da versão portátil.
+
+### 3. 🐧 Instalar o Pacote `.deb` no Ubuntu / Debian / Linux Mint
+```bash
+sudo dpkg -i release/rys-md_0.9.0_amd64.deb
 ```
 Depois de instalado, basta abrir **Rys MD** pelo menu de aplicativos do sistema ou executar `rys-md` no terminal.
 
-### 2. Rodar em Modo de Desenvolvimento
+### 4. Rodar em Modo de Desenvolvimento
 Pré-requisitos: [Bun](https://bun.sh/) (ou Node.js 20+) e [Rust / Cargo](https://rustup.rs/).
 
 ```bash
@@ -130,11 +145,11 @@ bun install
 bun run dev
 ```
 
-### 3. Gerar o Instalador `.deb` Localmente
+### 5. Gerar o Instalador `.deb` Localmente
 ```bash
 bun run build:deb
 ```
-O pacote instalável será gerado automaticamente em `release/rys-md_0.8.0_amd64.deb`.
+O pacote instalável será gerado automaticamente em `release/rys-md_0.9.0_amd64.deb`.
 
 ---
 
