@@ -27,6 +27,7 @@ interface AppleNoteListProps {
   width: number
   onToggleSidebar: () => void
   onSearchChange: (q: string) => void
+  onOpenGlobalSearch: () => void
   onSelectNote: (relativePath: string) => void
   onCreateNote: () => void
   onTogglePin: (relativePath: string) => void
@@ -45,6 +46,7 @@ export function AppleNoteList({
   width,
   onToggleSidebar,
   onSearchChange,
+  onOpenGlobalSearch,
   onSelectNote,
   onCreateNote,
   onTogglePin,
@@ -258,7 +260,7 @@ export function AppleNoteList({
       style={{ width: `${width}px` }}
       className="rys-glass-notelist flex h-full min-w-[200px] shrink-0 flex-col border-r border-border select-none"
     >
-      {/* Cabeçalho da Lista de Notas + Botão Nova Nota */}
+      {/* Cabeçalho da Lista de Notas + Botão Busca Global (🔎️) + Botão Nova Nota */}
       <div className="flex h-12 items-center justify-between gap-2 px-3.5 border-b border-border/50">
         <div className="flex items-center gap-2.5 min-w-0">
           {sidebarCollapsed && (
@@ -275,32 +277,51 @@ export function AppleNoteList({
             </p>
           </div>
         </div>
-        {!isTrashView && (
+        <div className="flex items-center gap-1.5 shrink-0">
           <button
             type="button"
-            onClick={onCreateNote}
-            title="Nova Nota (Ctrl+N)"
-            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-2.5 py-1.5 text-xs font-semibold text-primary-foreground shadow-xs hover:opacity-90 transition-opacity cursor-pointer shrink-0"
+            onClick={onOpenGlobalSearch}
+            title="Busca Global em todas as notas, pastas e #tags (Ctrl + K)"
+            aria-label="Abrir Busca Global"
+            className="inline-flex items-center justify-center rounded-lg border border-border/70 bg-background/60 p-1.5 text-muted-foreground hover:bg-accent hover:text-primary transition-colors cursor-pointer"
           >
-            <SquarePen className="size-3.5" />
-            <span>Nova</span>
+            <Search className="size-3.5" />
           </button>
-        )}
+          {!isTrashView && (
+            <button
+              type="button"
+              onClick={onCreateNote}
+              title="Nova Nota (Ctrl+N)"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-2.5 py-1.5 text-xs font-semibold text-primary-foreground shadow-xs hover:opacity-90 transition-opacity cursor-pointer shrink-0"
+            >
+              <SquarePen className="size-3.5" />
+              <span>Nova</span>
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Barra de Busca Instantânea */}
+      {/* Barra de Busca Instantânea + Botão Lupa (🔎️) clicável para Busca Global */}
       <div className="p-2.5 border-b border-border/40">
         <div className="relative flex items-center">
-          <Search className="pointer-events-none absolute left-2.5 size-3.5 text-muted-foreground" />
+          <button
+            type="button"
+            onClick={onOpenGlobalSearch}
+            title="Abrir Busca Global (Ctrl + K)"
+            aria-label="Abrir Busca Global (Ctrl + K)"
+            className="absolute left-1.5 flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-primary transition-colors cursor-pointer"
+          >
+            <Search className="size-3.5" />
+          </button>
           <input
             ref={searchInputRef}
             type="text"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Buscar em todas as notas (Ctrl+F)..."
-            className="w-full rounded-lg border border-border/70 bg-background/80 pl-8 pr-7 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+            placeholder="Filtrar lista ou Ctrl+K para Busca Global..."
+            className="w-full rounded-lg border border-border/70 bg-background/80 pl-8 pr-14 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
           />
-          {searchQuery && (
+          {searchQuery ? (
             <button
               type="button"
               onClick={() => onSearchChange('')}
@@ -308,6 +329,15 @@ export function AppleNoteList({
               title="Limpar busca"
             >
               <X className="size-3.5" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onOpenGlobalSearch}
+              title="Abrir Busca Global (Ctrl + K)"
+              className="absolute right-1.5 rounded border border-border/70 bg-muted/60 px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground hover:bg-accent hover:text-primary transition-colors cursor-pointer"
+            >
+              Ctrl+K
             </button>
           )}
         </div>

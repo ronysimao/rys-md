@@ -377,8 +377,12 @@ export function RichMarkdownEditor({
             return true
           }
 
-          // Ctrl/Cmd + K -> toggle link bubble
-          if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+          // Ctrl/Cmd + Shift + K -> toggle link bubble (Ctrl/Cmd + K is reserved for Global Search)
+          if (
+            (event.ctrlKey || event.metaKey) &&
+            event.shiftKey &&
+            event.key.toLowerCase() === 'k'
+          ) {
             event.preventDefault()
             const pos = getLinkBubblePosition(ed, rootRef.current)
             if (pos) {

@@ -11,6 +11,7 @@ import {
   Minimize2,
   Pin,
   RotateCcw,
+  Search,
   Sparkles,
   Trash2
 } from 'lucide-react'
@@ -28,6 +29,7 @@ interface NoteHeaderBarProps {
   isTocOpen: boolean
   onToggleFocusMode: () => void
   onToggleToc: () => void
+  onOpenGlobalSearch: () => void
   onChangeEditorMode: (mode: EditorMode) => void
   onTogglePin: () => void
   onTrashNote: () => void
@@ -44,6 +46,7 @@ export function NoteHeaderBar({
   isTocOpen,
   onToggleFocusMode,
   onToggleToc,
+  onOpenGlobalSearch,
   onChangeEditorMode,
   onTogglePin,
   onTrashNote,
@@ -151,8 +154,19 @@ export function NoteHeaderBar({
         </div>
       </div>
 
-      {/* Direita: Toggle Rich/Source (Orca) + Table of Contents + Ações Rápidas */}
+      {/* Direita: Busca Global (🔎️) + Toggle Rich/Source (Orca) + Table of Contents + Ações Rápidas */}
       <div className="flex items-center gap-1.5 shrink-0">
+        {/* Botão Lupa de Busca Global (Ctrl + K) */}
+        <button
+          type="button"
+          onClick={onOpenGlobalSearch}
+          title="Busca Global (Ctrl + K)"
+          aria-label="Busca Global (Ctrl + K)"
+          className="inline-flex items-center justify-center rounded-lg border border-border bg-muted/30 p-1.5 text-muted-foreground hover:bg-accent hover:text-primary transition-colors cursor-pointer"
+        >
+          <Search className="size-3.5" />
+        </button>
+
         {/* Toggle Rich / Source estilo Orca ADE */}
         <div className="inline-flex items-center rounded-lg border border-border bg-muted/50 p-0.5">
           <button

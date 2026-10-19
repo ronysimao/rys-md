@@ -284,6 +284,12 @@ const OrcaDetails = Details.extend({
         false
     }
   },
+  addProseMirrorPlugins() {
+    // Do NOT register the default `detailsSelection` plugin from @tiptap/extension-details,
+    // which checks `element.offsetParent !== null` on every transaction and teleports the cursor
+    // out of checklists/content inside Toggle H1-H5!
+    return []
+  },
   markdownTokenizer: {
     name: 'details',
     level: 'block',
@@ -335,6 +341,44 @@ const OrcaDetails = Details.extend({
 
 const OrcaDetailsSummary = DetailsSummary.extend({
   content: 'inline*'
+})
+
+const OrcaDetailsContent = DetailsContent.extend({
+  addKeyboardShortcuts() {
+    const parentShortcuts = this.parent?.() ?? {}
+    return {
+      ...parentShortcuts,
+      Enter: ({ editor }) => {
+        const { selection } = editor.state
+        const { $from, empty } = selection
+        if (!empty) return false
+
+        // Never jump out of a Toggle while typing or pressing Enter inside a checklist, bullet list, or ordered list!
+        for (let d = $from.depth; d > 0; d--) {
+          const nodeName = $from.node(d).type.name
+          if (
+            nodeName === 'taskItem' ||
+            nodeName === 'taskList' ||
+            nodeName === 'listItem' ||
+            nodeName === 'bulletList' ||
+            nodeName === 'orderedList'
+          ) {
+            return false
+          }
+          if (nodeName === 'detailsContent') {
+            break
+          }
+        }
+
+        // Only allow exiting the Toggle when pressing Enter on an empty direct child paragraph at the end of detailsContent
+        if ($from.parent.type.name !== 'paragraph' || $from.parent.content.size > 0) {
+          return false
+        }
+
+        return parentShortcuts.Enter?.({ editor }) || false
+      }
+    }
+  }
 })
 
 const RichMarkdownCode = Code.extend({
@@ -415,7 +459,7 @@ export function createRichMarkdownExtensions(vaultPath: string): AnyExtension[] 
       }
     }),
     OrcaDetailsSummary,
-    DetailsContent,
+    OrcaDetailsContent,
     Table.configure({
       resizable: false
     }),

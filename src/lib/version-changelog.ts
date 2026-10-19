@@ -1,4 +1,4 @@
-export const APP_VERSION = '0.5.0'
+export const APP_VERSION = '0.6.0'
 export const APP_REPO_URL = 'https://github.com/ronysimao/rys-md'
 export const APP_RELEASES_URL = 'https://github.com/ronysimao/rys-md/releases'
 export const APP_SITE_URL = 'https://md.rysdev.com'
@@ -11,6 +11,17 @@ export interface VersionReleaseEntry {
 }
 
 export const VERSION_CHANGELOG: VersionReleaseEntry[] = [
+  {
+    version: '0.6.0',
+    date: 'Outubro 2026',
+    title: 'Busca Global Estilo daily.dev (Ctrl + K / 🔎️), Estabilidade de Checklists em Toggle H3 & Auto-Update Limpo',
+    highlights: [
+      'Nova Busca Global (Ctrl + K ou clique no ícone 🔎️) inspirada no daily.dev: escurece o fundo, exibe modal retangular centralizado no topo (~54% da tela) e realiza Fuzzy Search em tempo real em tags (#tag), títulos de notas, títulos de pastas e conteúdo completo das notas.',
+      'Resultados da Busca Global organizados em 2 colunas (Esquerda: Local Encontrado | Direita: Conteúdo/Trecho), com navegação completa por teclado (↑/↓/Enter/Esc) e mouse com realce dinâmico na cor de acentuação.',
+      'Correção definitiva do cursor em elementos Toggle (H1–H5): checklists extensos não pulam mais para fora do bloco retrátil durante a digitação.',
+      'Encerramento atômico da janela anterior durante o Auto-Update (watchdog GTK + finalização da árvore de processos filhos antes de abrir a nova versão).'
+    ]
+  },
   {
     version: '0.5.0',
     date: 'Outubro 2026',

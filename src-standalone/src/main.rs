@@ -822,7 +822,7 @@ Gtk.main()
             let current_version = body
                 .get("currentVersion")
                 .and_then(|v| v.as_str())
-                .unwrap_or("0.5.0");
+                .unwrap_or("0.6.0");
             let check_script = r#"
 import sys, json, urllib.request
 
@@ -886,11 +886,16 @@ except Exception:
                 .to_string();
             let pid = std::process::id();
             let exe_path = std::env::current_exe()
-                .map(|p| p.to_string_lossy().to_string())
-                .unwrap_or_else(|_| "/usr/bin/rys-md".to_string());
+                .ok()
+                .map(|p| {
+                    let s = p.to_string_lossy().to_string();
+                    s.strip_suffix(" (deleted)").unwrap_or(&s).to_string()
+                })
+                .filter(|s| Path::new(s).exists())
+                .unwrap_or_else(|| "/usr/bin/rys-md".to_string());
 
             let updater_py = r#"
-import sys, os, json, time, subprocess, urllib.request
+import sys, os, json, time, signal, subprocess, urllib.request
 
 download_url = sys.argv[1]
 old_pid = int(sys.argv[2])
@@ -918,16 +923,46 @@ if download_url:
     except Exception:
         pass
 
+installed_ok = False
 if os.path.isfile(deb_path):
-    subprocess.run(['pkexec', 'dpkg', '-i', deb_path])
+    res = subprocess.run(['pkexec', 'dpkg', '-i', deb_path])
+    installed_ok = (res.returncode == 0)
 
+if not installed_ok:
+    sys.exit(0)
+
+# 1. Kill all child processes of old_pid (including the GTK_WEBKIT python3 window)
+subprocess.run(['pkill', '-TERM', '-P', str(old_pid)], stderr=subprocess.DEVNULL)
+
+# 2. Kill any lingering GTK_WEBKIT python3 window or previous rys-md instance
+my_pid = os.getpid()
 try:
-    os.kill(old_pid, 15)
+    out = subprocess.check_output(['pgrep', '-f', 'GLib.set_prgname..rys-md..'], text=True)
+    for line in out.splitlines():
+        p = int(line.strip())
+        if p != my_pid:
+            try: os.kill(p, signal.SIGTERM)
+            except Exception: pass
 except Exception:
     pass
 
-time.sleep(0.6)
-subprocess.Popen([exe_path], start_new_session=True)
+try:
+    os.kill(old_pid, signal.SIGTERM)
+except Exception:
+    pass
+
+time.sleep(0.45)
+
+# Force SIGKILL if any old window or server is still alive
+subprocess.run(['pkill', '-KILL', '-P', str(old_pid)], stderr=subprocess.DEVNULL)
+try:
+    os.kill(old_pid, signal.SIGKILL)
+except Exception:
+    pass
+
+time.sleep(0.25)
+target_bin = '/usr/bin/rys-md' if os.path.isfile('/usr/bin/rys-md') else exe_path
+subprocess.Popen([target_bin], start_new_session=True)
 "#;
             let _ = Command::new("/usr/bin/python3")
                 .arg("-c")
@@ -1007,8 +1042,20 @@ gi.require_version('WebKit2', '4.1')
 from gi.repository import Gtk, WebKit2, Gdk, GLib
 
 url = sys.argv[1]
+parent_pid = int(sys.argv[2]) if len(sys.argv) > 2 else 0
 GLib.set_prgname('rys-md')
 GLib.set_application_name('Rys MD')
+
+# Watchdog: if the parent Rust server process exits or is killed during an update, close this GTK window immediately
+if parent_pid > 0:
+    def check_parent_alive():
+        try:
+            os.kill(parent_pid, 0)
+            return True
+        except OSError:
+            Gtk.main_quit()
+            return False
+    GLib.timeout_add(400, check_parent_alive)
 
 win = Gtk.Window(title='Rys MD')
 win.set_default_size(1360, 860)
@@ -1182,6 +1229,7 @@ Gtk.main()
 
 fn spawn_app_window(url: &str) {
     let url_owned = url.to_string();
+    let parent_pid = std::process::id().to_string();
     std::thread::spawn(move || {
         // 1. Tenta abrir a janela nativa Linux (GTK3 + WebKit2GTK)
         let has_gtk_webkit = Command::new("/usr/bin/python3")
@@ -1196,6 +1244,7 @@ fn spawn_app_window(url: &str) {
                 .arg("-c")
                 .arg(GTK_WEBKIT_SCRIPT)
                 .arg(&url_owned)
+                .arg(&parent_pid)
                 .spawn()
             {
                 let _ = child.wait();

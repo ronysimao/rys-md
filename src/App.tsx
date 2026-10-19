@@ -13,6 +13,7 @@ import { AppleSidebar, handleWindowAction } from '@/components/layout/AppleSideb
 import { AppleNoteList } from '@/components/layout/AppleNoteList'
 import { NoteHeaderBar } from '@/components/layout/NoteHeaderBar'
 import { VersionChangelogModal } from '@/components/layout/VersionChangelogModal'
+import { GlobalSearchModal } from '@/components/layout/GlobalSearchModal'
 import { RichMarkdownEditor } from '@/components/editor/RichMarkdownEditor'
 
 const STORAGE_THEME_KEY = 'rys-md-theme'
@@ -84,6 +85,7 @@ export function App(): React.JSX.Element {
   })
 
   const [searchQuery, setSearchQuery] = useState('')
+  const [isGlobalSearchOpen, setIsGlobalSearchOpen] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
     const saved = Number(localStorage.getItem(STORAGE_SIDEBAR_WIDTH_KEY))
@@ -596,27 +598,33 @@ export function App(): React.JSX.Element {
     [vaultState, flushPendingSave]
   )
 
-  // Global keyboard shortcuts
+  // Global keyboard shortcuts (Ctrl+K for daily.dev-inspired Global Search, Ctrl+N for new note, Ctrl+\ for focus mode)
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'n') {
+      const isMod = e.metaKey || e.ctrlKey
+      if (isMod && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        e.stopPropagation()
+        setIsGlobalSearchOpen((prev) => !prev)
+        return
+      }
+      if (isMod && e.key.toLowerCase() === 'n') {
         e.preventDefault()
         void handleCreateNote()
-      } else if ((e.metaKey || e.ctrlKey) && e.key === '\\') {
+      } else if (isMod && e.key === '\\') {
         e.preventDefault()
         setFocusMode((v) => !v)
       } else if (
-        (e.metaKey || e.ctrlKey) &&
+        isMod &&
         e.shiftKey &&
         e.key.toLowerCase() === 'f'
       ) {
         e.preventDefault()
-        setFocusMode(false)
-        window.setTimeout(() => searchInputRef.current?.focus(), 40)
+        setIsGlobalSearchOpen(true)
       }
     }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
+    window.addEventListener('keydown', onKeyDown, { capture: true })
+    return () => window.removeEventListener('keydown', onKeyDown, { capture: true })
   }, [handleCreateNote])
 
   const handleCheckUpdate = useCallback(async () => {
@@ -829,6 +837,7 @@ export function App(): React.JSX.Element {
             width={noteListWidth}
             onToggleSidebar={handleToggleSidebarCollapse}
             onSearchChange={setSearchQuery}
+            onOpenGlobalSearch={() => setIsGlobalSearchOpen(true)}
             onSelectNote={async (relativePath) => {
               if (relativePath === selectedNotePath) return
               await flushPendingSave(true)
@@ -897,6 +906,7 @@ export function App(): React.JSX.Element {
               isTocOpen={isTocOpen}
               onToggleFocusMode={() => setFocusMode((v) => !v)}
               onToggleToc={() => setIsTocOpen((v) => !v)}
+              onOpenGlobalSearch={() => setIsGlobalSearchOpen(true)}
               onChangeEditorMode={setEditorMode}
               onTogglePin={() => void handleTogglePin(selectedNote.relativePath)}
               onTrashNote={() => void handleTrashNote(selectedNote.relativePath)}
@@ -930,6 +940,29 @@ export function App(): React.JSX.Element {
           <div className="flex-1 h-full" />
         )}
       </main>
+
+      {/* Busca Global inspirada no daily.dev (Ctrl + K ou clique em 🔎️) */}
+      {vaultState && (
+        <GlobalSearchModal
+          isOpen={isGlobalSearchOpen}
+          notes={vaultState.notes}
+          folders={orderedFolders}
+          onClose={() => setIsGlobalSearchOpen(false)}
+          onSelectNote={async (relativePath) => {
+            await flushPendingSave(true)
+            // Se o filtro ativo na barra lateral esconder a nota selecionada, mudamos para 'Todas as Notas'
+            const visibleInCurrent = filterNotesBySidebar(
+              vaultState.notes,
+              activeFilter
+            )
+            if (!visibleInCurrent.some((n) => n.relativePath === relativePath)) {
+              setActiveFilter({ kind: 'all' })
+            }
+            setSelectedNotePath(relativePath)
+          }}
+          onSelectFilter={(filter) => void handleSelectSidebarFilter(filter)}
+        />
+      )}
 
       {/* Version Changelog & Repository Modal */}
       <VersionChangelogModal

@@ -115,7 +115,7 @@ Os binários pré-compilados para **Linux** (`.deb` e `.AppImage`), **Windows** 
 
 ### 1. Instalar o Pacote `.deb` no Ubuntu / Debian / Linux Mint
 ```bash
-sudo dpkg -i release/rys-md_0.5.0_amd64.deb
+sudo dpkg -i release/rys-md_0.6.0_amd64.deb
 ```
 Depois de instalado, basta abrir **Rys MD** pelo menu de aplicativos do sistema ou executar `rys-md` no terminal.
 
@@ -134,7 +134,7 @@ bun run dev
 ```bash
 bun run build:deb
 ```
-O pacote instalável será gerado automaticamente em `release/rys-md_0.5.0_amd64.deb`.
+O pacote instalável será gerado automaticamente em `release/rys-md_0.6.0_amd64.deb`.
 
 ---
 
@@ -143,9 +143,10 @@ O pacote instalável será gerado automaticamente em `release/rys-md_0.5.0_amd64
 | Atalho | Ação |
 | :--- | :--- |
 | `Ctrl + N` | Criar nova nota na pasta atual |
+| `Ctrl + K` | Abrir **Busca Global** estilo daily.dev (Fuzzy Search em tags, títulos, pastas e conteúdo) |
 | `Ctrl + F` | Buscar dentro da nota atual (modos **Rich** e **Source**) |
 | `Ctrl + H` | Buscar e substituir dentro da nota atual |
-| `Ctrl + Shift + F` | Focar na busca global de todas as notas (Coluna 2) |
+| `Ctrl + Shift + F` | Abrir a **Busca Global** em todas as notas |
 | `Ctrl + S` | Forçar salvamento imediato da nota |
 | `Ctrl + +` / `Ctrl + =` | Aumentar zoom de toda a nota (Zoom In) |
 | `Ctrl + -` | Diminuir zoom de toda a nota (Zoom Out) |
@@ -154,7 +155,7 @@ O pacote instalável será gerado automaticamente em `release/rys-md_0.5.0_amd64
 | `Ctrl + B` / `Ctrl + I` | Negrito / Itálico |
 | `Ctrl + Shift + X` | Tachado (*Strikethrough*) |
 | `Ctrl + E` | Código Inline |
-| `Ctrl + K` | Inserir ou editar Link |
+| `Ctrl + Shift + K` | Inserir ou editar Link |
 | `/` | Abrir o Menu de Comandos Slash na linha atual |
 
 ---
