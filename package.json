@@ -1,7 +1,7 @@
 {
   "name": "rys-md",
   "private": true,
-  "version": "0.9.4",
+  "version": "0.9.5",
   "description": "Rys MD — Apple Notes UX meets Orca ADE Rich Markdown Editor (https://md.rysdev.com)",
   "homepage": "https://md.rysdev.com",
   "author": "ronysimao - RysDev (https://md.rysdev.com)",

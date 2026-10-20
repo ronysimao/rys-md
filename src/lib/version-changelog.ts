@@ -1,4 +1,4 @@
-export const APP_VERSION = '0.9.4'
+export const APP_VERSION = '0.9.5'
 export const APP_REPO_URL = 'https://github.com/ronysimao/rys-md'
 export const APP_RELEASES_URL = 'https://github.com/ronysimao/rys-md/releases'
 export const APP_SITE_URL = 'https://md.rysdev.com'
@@ -11,6 +11,15 @@ export interface VersionReleaseEntry {
 }
 
 export const VERSION_CHANGELOG: VersionReleaseEntry[] = [
+  {
+    version: '0.9.5',
+    date: 'Outubro 2026',
+    title: 'Bloco de Código (Code Block): Espaçamento Interno Superior & Seletor de Linguagem Temático (Claro/Escuro)',
+    highlights: [
+      'Espaçamento superior ampliado dentro do bloco de código (<pre>) para que o texto nunca fique coberto pelo seletor de linguagem ou pelo botão de copiar.',
+      'Novo dropdown customizado de seleção de linguagem com cores de fundo, borda e texto sincronizadas automaticamente com o tema ativo (Modo Escuro ou Modo Claro).'
+    ]
+  },
   {
     version: '0.9.4',
     date: 'Outubro 2026',

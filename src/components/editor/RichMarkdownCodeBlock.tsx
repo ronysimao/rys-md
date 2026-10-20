@@ -1,8 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { flushSync } from 'react-dom'
 import { NodeViewContent, NodeViewWrapper } from '@tiptap/react'
 import type { NodeViewProps } from '@tiptap/react'
-import { Copy, Check } from 'lucide-react'
+import { Copy, Check, ChevronDown } from 'lucide-react'
 import MermaidBlock from './MermaidBlock'
 import {
   getCodeBlockLanguageLabel,
@@ -16,7 +15,8 @@ export function RichMarkdownCodeBlock({
 }: NodeViewProps): React.JSX.Element {
   const language = (node.attrs.language as string) || ''
   const [copied, setCopied] = useState(false)
-  const [languageListMounted, setLanguageListMounted] = useState(false)
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const dropdownContainerRef = useRef<HTMLDivElement | null>(null)
   const copiedResetTimerRef = useRef<number | null>(null)
   const isMountedRef = useRef(false)
   const [isDark, setIsDark] = useState(() =>
@@ -33,6 +33,29 @@ export function RichMarkdownCodeBlock({
     })
     return () => observer.disconnect()
   }, [])
+
+  useEffect(() => {
+    if (!isDropdownOpen) return
+    const handlePointerDownOutside = (e: MouseEvent) => {
+      if (
+        dropdownContainerRef.current &&
+        !dropdownContainerRef.current.contains(e.target as Node)
+      ) {
+        setIsDropdownOpen(false)
+      }
+    }
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handlePointerDownOutside, true)
+    document.addEventListener('keydown', handleKeyDown, true)
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDownOutside, true)
+      document.removeEventListener('keydown', handleKeyDown, true)
+    }
+  }, [isDropdownOpen])
 
   const isMermaid = language === 'mermaid'
 
@@ -53,14 +76,10 @@ export function RichMarkdownCodeBlock({
     [clearCopiedResetTimer]
   )
 
-  const mountLanguageList = useCallback(() => {
-    if (languageListMounted) return
-    flushSync(() => setLanguageListMounted(true))
-  }, [languageListMounted])
-
-  const onChange = useCallback(
-    (e: React.ChangeEvent<HTMLSelectElement>) => {
-      updateAttributes({ language: e.target.value })
+  const handleSelectLanguage = useCallback(
+    (nextLang: string) => {
+      updateAttributes({ language: nextLang })
+      setIsDropdownOpen(false)
     },
     [updateAttributes]
   )
@@ -85,31 +104,88 @@ export function RichMarkdownCodeBlock({
     [clearCopiedResetTimer, node]
   )
 
+  const languages = getCodeBlockLanguages()
+  const hasCustomUnknownLang = Boolean(
+    language && !isKnownCodeBlockLanguage(language)
+  )
+
   return (
     <NodeViewWrapper className="rich-markdown-code-block-wrapper">
-      <select
-        className="rich-markdown-code-block-lang cursor-pointer"
+      <div
+        ref={dropdownContainerRef}
         contentEditable={false}
-        value={language}
-        onChange={onChange}
-        onMouseDown={mountLanguageList}
-        onFocus={mountLanguageList}
+        className="rich-markdown-code-block-lang-container"
       >
-        {languageListMounted ? (
-          getCodeBlockLanguages().map((lang) => (
-            <option key={lang.value} value={lang.value}>
-              {lang.label}
-            </option>
-          ))
-        ) : (
-          <option value={language}>{getCodeBlockLanguageLabel(language)}</option>
+        <button
+          type="button"
+          className="rich-markdown-code-block-lang cursor-pointer"
+          onMouseDown={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+          }}
+          onClick={(e) => {
+            e.stopPropagation()
+            setIsDropdownOpen((prev) => !prev)
+          }}
+          title="Selecionar linguagem do bloco de código"
+          aria-expanded={isDropdownOpen}
+        >
+          <span>{getCodeBlockLanguageLabel(language)}</span>
+          <ChevronDown
+            size={12}
+            className={`transition-transform duration-150 ${isDropdownOpen ? 'rotate-180' : ''}`}
+          />
+        </button>
+
+        {isDropdownOpen && (
+          <div
+            role="listbox"
+            className="rich-markdown-code-block-dropdown scrollbar-sleek"
+            onMouseDown={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+            }}
+          >
+            {languages.map((lang) => {
+              const isSelected = lang.value === language
+              return (
+                <button
+                  key={lang.value || '__plain__'}
+                  type="button"
+                  role="option"
+                  aria-selected={isSelected}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleSelectLanguage(lang.value)
+                  }}
+                  className={`rich-markdown-code-block-option cursor-pointer ${
+                    isSelected ? 'is-selected' : ''
+                  }`}
+                >
+                  <span>{lang.label}</span>
+                  {isSelected && <Check size={12} className="shrink-0" />}
+                </button>
+              )
+            })}
+            {hasCustomUnknownLang && (
+              <button
+                type="button"
+                role="option"
+                aria-selected={true}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleSelectLanguage(language)
+                }}
+                className="rich-markdown-code-block-option is-selected cursor-pointer"
+              >
+                <span>{language}</span>
+                <Check size={12} className="shrink-0" />
+              </button>
+            )}
+          </div>
         )}
-        {languageListMounted && language && !isKnownCodeBlockLanguage(language) ? (
-          <option key={language} value={language}>
-            {language}
-          </option>
-        ) : null}
-      </select>
+      </div>
+
       <button
         ref={setCopyButtonRef}
         type="button"
