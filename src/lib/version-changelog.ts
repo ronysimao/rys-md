@@ -1,4 +1,4 @@
-export const APP_VERSION = '0.9.0'
+export const APP_VERSION = '0.9.1'
 export const APP_REPO_URL = 'https://github.com/ronysimao/rys-md'
 export const APP_RELEASES_URL = 'https://github.com/ronysimao/rys-md/releases'
 export const APP_SITE_URL = 'https://md.rysdev.com'
@@ -11,6 +11,15 @@ export interface VersionReleaseEntry {
 }
 
 export const VERSION_CHANGELOG: VersionReleaseEntry[] = [
+  {
+    version: '0.9.1',
+    date: 'Outubro 2026',
+    title: 'Bordas Arredondadas Transparentes no macOS & Janela Inteligente (80% da Tela Centralizada)',
+    highlights: [
+      'Correção das 4 pontas brancas na janela do macOS: ativação de transparência nativa (transparent: true + macOSPrivateApi: true) no WKWebView/NSWindow.',
+      'Dimensionamento inteligente em todas as plataformas (Linux, macOS e Windows): o aplicativo agora detecta automaticamente a resolução do monitor principal e abre ocupando 80% da tela e centralizado.'
+    ]
+  },
   {
     version: '0.9.0',
     date: 'Outubro 2026',

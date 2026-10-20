@@ -1086,6 +1086,32 @@ open "/Applications/Rys MD.app"
 
 fn main() {
     tauri::Builder::default()
+        .setup(|app| {
+            use tauri::Manager;
+            if let Some(window) = app.get_webview_window("main") {
+                let monitor_opt = window
+                    .current_monitor()
+                    .ok()
+                    .flatten()
+                    .or_else(|| window.primary_monitor().ok().flatten());
+                if let Some(monitor) = monitor_opt {
+                    let screen = monitor.size();
+                    let scale = monitor.scale_factor();
+                    let min_phys_w = (860.0 * scale).round() as u32;
+                    let min_phys_h = (540.0 * scale).round() as u32;
+                    let target_w = (((screen.width as f64) * 0.80).round() as u32).max(min_phys_w);
+                    let target_h = (((screen.height as f64) * 0.80).round() as u32).max(min_phys_h);
+                    if target_w > 0 && target_h > 0 {
+                        let _ = window.set_size(tauri::Size::Physical(tauri::PhysicalSize {
+                            width: target_w,
+                            height: target_h,
+                        }));
+                    }
+                }
+                let _ = window.center();
+            }
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             scan_vault,
             save_note,

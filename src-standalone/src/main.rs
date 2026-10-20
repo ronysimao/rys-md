@@ -932,7 +932,7 @@ Gtk.main()
             let current_version = body
                 .get("currentVersion")
                 .and_then(|v| v.as_str())
-                .unwrap_or("0.9.0");
+                .unwrap_or("0.9.1");
             let check_script = r#"
 import sys, json, urllib.request
 
@@ -1209,7 +1209,18 @@ if parent_pid > 0:
     GLib.timeout_add(400, check_parent_alive)
 
 win = Gtk.Window(title='Rys MD')
-win.set_default_size(1360, 860)
+win_w, win_h = 1360, 860
+display = Gdk.Display.get_default()
+if display is not None:
+    monitor = display.get_primary_monitor()
+    if monitor is None and display.get_n_monitors() > 0:
+        monitor = display.get_monitor(0)
+    if monitor is not None:
+        geom = monitor.get_geometry()
+        if geom.width > 0 and geom.height > 0:
+            win_w = max(860, int(geom.width * 0.80))
+            win_h = max(540, int(geom.height * 0.80))
+win.set_default_size(win_w, win_h)
 win.set_position(Gtk.WindowPosition.CENTER)
 win.set_decorated(False)
 win.set_app_paintable(True)
