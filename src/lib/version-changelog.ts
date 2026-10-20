@@ -1,4 +1,4 @@
-export const APP_VERSION = '0.9.5'
+export const APP_VERSION = '0.9.6'
 export const APP_REPO_URL = 'https://github.com/ronysimao/rys-md'
 export const APP_RELEASES_URL = 'https://github.com/ronysimao/rys-md/releases'
 export const APP_SITE_URL = 'https://md.rysdev.com'
@@ -11,6 +11,15 @@ export interface VersionReleaseEntry {
 }
 
 export const VERSION_CHANGELOG: VersionReleaseEntry[] = [
+  {
+    version: '0.9.6',
+    date: 'Outubro 2026',
+    title: 'Bloco de Código (Code Block): Alinhamento Lado a Lado do Botão Copiar + Dropdown e Espaçamento Ampliado',
+    highlights: [
+      'Alinhamento horizontal e vertical em linha única (flex) entre o botão Copiar e o seletor de linguagem no topo direito do bloco Code, evitando qualquer sobreposição.',
+      'Aumento do espaçamento superior interno (padding-top: 2.9em) para deixar o código ainda mais distante e limpo em relação à barra de ações.'
+    ]
+  },
   {
     version: '0.9.5',
     date: 'Outubro 2026',

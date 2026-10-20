@@ -112,98 +112,103 @@ export function RichMarkdownCodeBlock({
   return (
     <NodeViewWrapper className="rich-markdown-code-block-wrapper">
       <div
-        ref={dropdownContainerRef}
         contentEditable={false}
-        className="rich-markdown-code-block-lang-container"
+        className="rich-markdown-code-block-actions"
       >
         <button
+          ref={setCopyButtonRef}
           type="button"
-          className="rich-markdown-code-block-lang cursor-pointer"
-          onMouseDown={(e) => {
-            e.preventDefault()
-            e.stopPropagation()
-          }}
-          onClick={(e) => {
-            e.stopPropagation()
-            setIsDropdownOpen((prev) => !prev)
-          }}
-          title="Selecionar linguagem do bloco de código"
-          aria-expanded={isDropdownOpen}
+          className="code-block-copy-btn cursor-pointer"
+          contentEditable={false}
+          onClick={handleCopy}
+          aria-label="Copiar código"
+          title="Copiar código"
         >
-          <span>{getCodeBlockLanguageLabel(language)}</span>
-          <ChevronDown
-            size={12}
-            className={`transition-transform duration-150 ${isDropdownOpen ? 'rotate-180' : ''}`}
-          />
+          {copied ? (
+            <>
+              <Check size={13} />
+              <span className="code-block-copy-label text-[11px] ml-1">Copiado</span>
+            </>
+          ) : (
+            <Copy size={13} />
+          )}
         </button>
 
-        {isDropdownOpen && (
-          <div
-            role="listbox"
-            className="rich-markdown-code-block-dropdown scrollbar-sleek"
+        <div
+          ref={dropdownContainerRef}
+          className="rich-markdown-code-block-lang-container"
+        >
+          <button
+            type="button"
+            className="rich-markdown-code-block-lang cursor-pointer"
             onMouseDown={(e) => {
               e.preventDefault()
               e.stopPropagation()
             }}
+            onClick={(e) => {
+              e.stopPropagation()
+              setIsDropdownOpen((prev) => !prev)
+            }}
+            title="Selecionar linguagem do bloco de código"
+            aria-expanded={isDropdownOpen}
           >
-            {languages.map((lang) => {
-              const isSelected = lang.value === language
-              return (
+            <span>{getCodeBlockLanguageLabel(language)}</span>
+            <ChevronDown
+              size={12}
+              className={`transition-transform duration-150 ${isDropdownOpen ? 'rotate-180' : ''}`}
+            />
+          </button>
+
+          {isDropdownOpen && (
+            <div
+              role="listbox"
+              className="rich-markdown-code-block-dropdown scrollbar-sleek"
+              onMouseDown={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+              }}
+            >
+              {languages.map((lang) => {
+                const isSelected = lang.value === language
+                return (
+                  <button
+                    key={lang.value || '__plain__'}
+                    type="button"
+                    role="option"
+                    aria-selected={isSelected}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleSelectLanguage(lang.value)
+                    }}
+                    className={`rich-markdown-code-block-option cursor-pointer ${
+                      isSelected ? 'is-selected' : ''
+                    }`}
+                  >
+                    <span>{lang.label}</span>
+                    {isSelected && <Check size={12} className="shrink-0" />}
+                  </button>
+                )
+              })}
+              {hasCustomUnknownLang && (
                 <button
-                  key={lang.value || '__plain__'}
                   type="button"
                   role="option"
-                  aria-selected={isSelected}
+                  aria-selected={true}
                   onClick={(e) => {
                     e.stopPropagation()
-                    handleSelectLanguage(lang.value)
+                    handleSelectLanguage(language)
                   }}
-                  className={`rich-markdown-code-block-option cursor-pointer ${
-                    isSelected ? 'is-selected' : ''
-                  }`}
+                  className="rich-markdown-code-block-option is-selected cursor-pointer"
                 >
-                  <span>{lang.label}</span>
-                  {isSelected && <Check size={12} className="shrink-0" />}
+                  <span>{language}</span>
+                  <Check size={12} className="shrink-0" />
                 </button>
-              )
-            })}
-            {hasCustomUnknownLang && (
-              <button
-                type="button"
-                role="option"
-                aria-selected={true}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  handleSelectLanguage(language)
-                }}
-                className="rich-markdown-code-block-option is-selected cursor-pointer"
-              >
-                <span>{language}</span>
-                <Check size={12} className="shrink-0" />
-              </button>
-            )}
-          </div>
-        )}
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
-      <button
-        ref={setCopyButtonRef}
-        type="button"
-        className="code-block-copy-btn cursor-pointer"
-        contentEditable={false}
-        onClick={handleCopy}
-        aria-label="Copiar código"
-        title="Copiar código"
-      >
-        {copied ? (
-          <>
-            <Check size={14} />
-            <span className="code-block-copy-label text-[11px] ml-1">Copiado</span>
-          </>
-        ) : (
-          <Copy size={14} />
-        )}
-      </button>
       <NodeViewContent<'pre'> as="pre" />
       {isMermaid && node.textContent.trim() && (
         <div contentEditable={false} className="mermaid-preview">
