@@ -1,6 +1,6 @@
 [package]
 name = "rys-md"
-version = "0.9.1"
+version = "0.9.2"
 description = "Rys MD — Apple Notes + Orca ADE Markdown Editor (https://md.rysdev.com)"
 authors = ["ronysimao - RysDev <contato@rysdev.com>"]
 license = "MIT"

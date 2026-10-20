@@ -832,6 +832,7 @@ except Exception:
 
 #[tauri::command]
 fn window_action(window: tauri::Window, action: String) -> Result<serde_json::Value, String> {
+    use tauri::runtime::ResizeDirection;
     match action.as_str() {
         "minimize" => {
             let _ = window.minimize();
@@ -848,6 +849,30 @@ fn window_action(window: tauri::Window, action: String) -> Result<serde_json::Va
         }
         "drag" => {
             let _ = window.start_dragging();
+        }
+        "resize-n" => {
+            let _ = window.start_resize_dragging(ResizeDirection::North);
+        }
+        "resize-s" => {
+            let _ = window.start_resize_dragging(ResizeDirection::South);
+        }
+        "resize-w" => {
+            let _ = window.start_resize_dragging(ResizeDirection::West);
+        }
+        "resize-e" => {
+            let _ = window.start_resize_dragging(ResizeDirection::East);
+        }
+        "resize-nw" => {
+            let _ = window.start_resize_dragging(ResizeDirection::NorthWest);
+        }
+        "resize-ne" => {
+            let _ = window.start_resize_dragging(ResizeDirection::NorthEast);
+        }
+        "resize-sw" => {
+            let _ = window.start_resize_dragging(ResizeDirection::SouthWest);
+        }
+        "resize-se" => {
+            let _ = window.start_resize_dragging(ResizeDirection::SouthEast);
         }
         _ => {}
     }
@@ -1089,6 +1114,16 @@ fn main() {
         .setup(|app| {
             use tauri::Manager;
             if let Some(window) = app.get_webview_window("main") {
+                #[cfg(target_os = "macos")]
+                {
+                    let _ = window.set_shadow(true);
+                }
+                #[cfg(target_os = "windows")]
+                {
+                    let _ = window.set_shadow(false);
+                    let _ = window.set_decorations(false);
+                    let _ = window.set_background_color(Some(tauri::webview::Color(0, 0, 0, 0)));
+                }
                 let monitor_opt = window
                     .current_monitor()
                     .ok()

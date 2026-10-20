@@ -58,14 +58,33 @@ interface AppleSidebarProps {
   onCheckOrPerformUpdate: () => void
 }
 
-export async function handleWindowAction(
-  action: 'close' | 'minimize' | 'maximize' | 'drag'
-) {
+export type WindowActionType =
+  | 'close'
+  | 'minimize'
+  | 'maximize'
+  | 'drag'
+  | 'resize-n'
+  | 'resize-s'
+  | 'resize-w'
+  | 'resize-e'
+  | 'resize-nw'
+  | 'resize-ne'
+  | 'resize-sw'
+  | 'resize-se'
+
+export async function handleWindowAction(action: WindowActionType) {
   const isTauri =
     typeof window !== 'undefined' &&
     Boolean((window as unknown as Record<string, unknown>).__TAURI_INTERNALS__)
 
   if (isTauri) {
+    try {
+      const { invoke } = await import('@tauri-apps/api/core')
+      await invoke('window_action', { action })
+      return
+    } catch {
+      // fallback to @tauri-apps/api/window below
+    }
     try {
       const { getCurrentWindow } = await import('@tauri-apps/api/window')
       const win = getCurrentWindow()

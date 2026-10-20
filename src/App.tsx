@@ -770,34 +770,58 @@ export function App(): React.JSX.Element {
       {/* Bordas e cantos da janela com cursores de redimensionamento imediatos no hover */}
       <div
         aria-hidden="true"
+        onMouseDown={(e) => {
+          if (e.button === 0) void handleWindowAction('resize-n')
+        }}
         className="rys-window-resize-edge rys-edge-n fixed top-0 left-3 right-3 h-1.5 z-50"
       />
       <div
         aria-hidden="true"
+        onMouseDown={(e) => {
+          if (e.button === 0) void handleWindowAction('resize-s')
+        }}
         className="rys-window-resize-edge rys-edge-s fixed bottom-0 left-3 right-3 h-1.5 z-50"
       />
       <div
         aria-hidden="true"
+        onMouseDown={(e) => {
+          if (e.button === 0) void handleWindowAction('resize-w')
+        }}
         className="rys-window-resize-edge rys-edge-w fixed left-0 top-3 bottom-3 w-1.5 z-50"
       />
       <div
         aria-hidden="true"
+        onMouseDown={(e) => {
+          if (e.button === 0) void handleWindowAction('resize-e')
+        }}
         className="rys-window-resize-edge rys-edge-e fixed right-0 top-3 bottom-3 w-1.5 z-50"
       />
       <div
         aria-hidden="true"
+        onMouseDown={(e) => {
+          if (e.button === 0) void handleWindowAction('resize-nw')
+        }}
         className="rys-window-resize-edge rys-edge-nw fixed top-0 left-0 w-3 h-3 z-50"
       />
       <div
         aria-hidden="true"
+        onMouseDown={(e) => {
+          if (e.button === 0) void handleWindowAction('resize-ne')
+        }}
         className="rys-window-resize-edge rys-edge-ne fixed top-0 right-0 w-3 h-3 z-50"
       />
       <div
         aria-hidden="true"
+        onMouseDown={(e) => {
+          if (e.button === 0) void handleWindowAction('resize-sw')
+        }}
         className="rys-window-resize-edge rys-edge-sw fixed bottom-0 left-0 w-3 h-3 z-50"
       />
       <div
         aria-hidden="true"
+        onMouseDown={(e) => {
+          if (e.button === 0) void handleWindowAction('resize-se')
+        }}
         className="rys-window-resize-edge rys-edge-se fixed bottom-0 right-0 w-3 h-3 z-50"
       />
 

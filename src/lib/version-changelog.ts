@@ -1,4 +1,4 @@
-export const APP_VERSION = '0.9.1'
+export const APP_VERSION = '0.9.2'
 export const APP_REPO_URL = 'https://github.com/ronysimao/rys-md'
 export const APP_RELEASES_URL = 'https://github.com/ronysimao/rys-md/releases'
 export const APP_SITE_URL = 'https://md.rysdev.com'
@@ -11,6 +11,16 @@ export interface VersionReleaseEntry {
 }
 
 export const VERSION_CHANGELOG: VersionReleaseEntry[] = [
+  {
+    version: '0.9.2',
+    date: 'Outubro 2026',
+    title: 'Bordas Arredondadas Transparentes no Windows 10/11 & Redimensionamento Nativo nos 8 Lados/Cantos',
+    highlights: [
+      'Correção das bordas retangulares e cantos escuros no Windows 10: desativação do frame DWM retangular (shadow: false no Windows) combinada com fundo WebView2 100% transparente (RGBA 0,0,0,0) para exibir cantos arredondados suaves de 16px.',
+      'Redimensionamento nativo em todas as 8 bordas e cantos (N, S, L, O, NO, NE, SO, SE) integrado diretamente ao motor de janelas no Windows, macOS e Linux.',
+      'Instalador de macOS resiliente: busca automaticamente o binário Universal mais recente nas Releases do GitHub sem falhar caso uma versão ainda esteja compilando.'
+    ]
+  },
   {
     version: '0.9.1',
     date: 'Outubro 2026',
