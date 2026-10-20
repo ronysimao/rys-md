@@ -122,6 +122,8 @@ export function App(): React.JSX.Element {
     vaultPath: string
   } | null>(null)
   const importNoticeTimerRef = useRef<number | null>(null)
+  const [upToDateToast, setUpToDateToast] = useState<string | null>(null)
+  const upToDateToastTimerRef = useRef<number | null>(null)
 
   const [isVaultModalOpen, setIsVaultModalOpen] = useState(false)
   const [vaultPathDraft, setVaultPathDraft] = useState('')
@@ -699,6 +701,16 @@ export function App(): React.JSX.Element {
     [flushPendingSave, updateInfo]
   )
 
+  const showUpToDateToast = useCallback((version: string) => {
+    setUpToDateToast(version)
+    if (upToDateToastTimerRef.current) {
+      window.clearTimeout(upToDateToastTimerRef.current)
+    }
+    upToDateToastTimerRef.current = window.setTimeout(() => {
+      setUpToDateToast(null)
+    }, 4500)
+  }, [])
+
   const handleCheckOrPerformUpdate = useCallback(async () => {
     if (updateInfo?.hasUpdate) {
       await handlePerformUpdate(updateInfo)
@@ -708,9 +720,9 @@ export function App(): React.JSX.Element {
     if (info.hasUpdate) {
       await handlePerformUpdate(info)
     } else {
-      setIsVersionModalOpen(true)
+      showUpToDateToast(APP_VERSION)
     }
-  }, [updateInfo, handleCheckUpdate, handlePerformUpdate])
+  }, [updateInfo, handleCheckUpdate, handlePerformUpdate, showUpToDateToast])
 
   // Automatic background update check (Orca ADE style)
   useEffect(() => {
@@ -1061,6 +1073,35 @@ export function App(): React.JSX.Element {
         onCheckUpdate={() => void handleCheckUpdate()}
         onPerformUpdate={() => void handlePerformUpdate()}
       />
+
+      {upToDateToast && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-5 right-5 z-50 flex items-center gap-3 rounded-xl border border-primary/40 bg-popover/95 px-4 py-3 text-xs text-popover-foreground shadow-xl backdrop-blur-xl transition-all"
+        >
+          <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
+            <Sparkles className="size-4" />
+          </div>
+          <div className="min-w-0 pr-1">
+            <p className="font-semibold text-foreground">
+              Rys MD já está atualizado
+            </p>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              Você já está utilizando a versão mais atual (<code>v{upToDateToast}</code>).
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setUpToDateToast(null)}
+            style={{ cursor: 'pointer' }}
+            title="Fechar aviso"
+            className="rounded-lg p-1 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer shrink-0"
+          >
+            <X className="size-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* Vault Directory Switcher Modal */}
       {isVaultModalOpen && (

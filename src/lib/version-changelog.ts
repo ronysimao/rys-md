@@ -1,4 +1,4 @@
-export const APP_VERSION = '0.9.2'
+export const APP_VERSION = '0.9.3'
 export const APP_REPO_URL = 'https://github.com/ronysimao/rys-md'
 export const APP_RELEASES_URL = 'https://github.com/ronysimao/rys-md/releases'
 export const APP_SITE_URL = 'https://md.rysdev.com'
@@ -11,6 +11,17 @@ export interface VersionReleaseEntry {
 }
 
 export const VERSION_CHANGELOG: VersionReleaseEntry[] = [
+  {
+    version: '0.9.3',
+    date: 'Outubro 2026',
+    title: 'Auto-Update Multiplataforma (Windows/macOS/Linux), Toast de Atualização, Pill Exclusiva & Atalho Cmd + K no Mac',
+    highlights: [
+      'Correção do Auto-Update no Windows 10/11 e macOS: seleção automática do binário correspondente ao sistema operacional (.exe no Windows, .app.tar.gz no Mac, .deb no Linux) com download via curl.exe/TLS 1.2 e validação de integridade antes de substituir o executável.',
+      'Toast de confirmação no canto inferior direito: ao clicar em "Atualizar Rys MD" quando o aplicativo já está atualizado, exibe um Toast informando que você já está na versão mais recente (sem abrir o modal de novidades).',
+      'Pill de versão posicionada no lado oposto ao botão de recolher a 1ª coluna (exclusiva para abrir o modal de alterações) e correção global do cursor pointer (mãozinha) em todos os elementos clicáveis no Windows, macOS e Linux.',
+      'Atalho "Cmd + K" exibido automaticamente no campo de Busca Global quando executado no macOS (mantendo "Ctrl+K" no Linux e Windows).'
+    ]
+  },
   {
     version: '0.9.2',
     date: 'Outubro 2026',

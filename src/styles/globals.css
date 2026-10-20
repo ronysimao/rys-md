@@ -178,6 +178,26 @@ body {
 }
 
 /* Efeito luminoso estático (mesmo brilho do cursor gordinho, sem piscar) nos botões da aplicação */
+button,
+button *,
+a,
+a *,
+select,
+summary,
+label,
+[role='button'],
+[role='button'] *,
+[role='option'],
+[role='tab'],
+[role='menuitem'],
+input[type='checkbox'],
+input[type='radio'],
+input[type='file'],
+.cursor-pointer,
+.cursor-pointer * {
+  cursor: pointer !important;
+}
+
 .bg-primary {
   box-shadow:
     0 0 10px color-mix(in srgb, var(--primary) 48%, transparent),

@@ -72,12 +72,36 @@ export type WindowActionType =
   | 'resize-sw'
   | 'resize-se'
 
+const RESIZE_DIRECTION_MAP: Record<
+  string,
+  'North' | 'South' | 'West' | 'East' | 'NorthWest' | 'NorthEast' | 'SouthWest' | 'SouthEast'
+> = {
+  'resize-n': 'North',
+  'resize-s': 'South',
+  'resize-w': 'West',
+  'resize-e': 'East',
+  'resize-nw': 'NorthWest',
+  'resize-ne': 'NorthEast',
+  'resize-sw': 'SouthWest',
+  'resize-se': 'SouthEast'
+}
+
 export async function handleWindowAction(action: WindowActionType) {
   const isTauri =
     typeof window !== 'undefined' &&
     Boolean((window as unknown as Record<string, unknown>).__TAURI_INTERNALS__)
 
   if (isTauri) {
+    const resizeDir = RESIZE_DIRECTION_MAP[action]
+    if (resizeDir) {
+      try {
+        const { getCurrentWindow } = await import('@tauri-apps/api/window')
+        await getCurrentWindow().startResizeDragging(resizeDir)
+      } catch {
+        // ignore
+      }
+      return
+    }
     try {
       const { invoke } = await import('@tauri-apps/api/core')
       await invoke('window_action', { action })
@@ -134,54 +158,69 @@ export function WindowTrafficLights({
   onOpenVersionModal?: () => void
 }): React.JSX.Element {
   return (
-    <div className="flex items-center gap-2">
-      {/* Botões de Controle de Janela (Fechar, Minimizar, Maximizar) no canto superior esquerdo */}
-      <div className="group/lights flex items-center gap-1.5 mr-1">
+    <div
+      className={cn(
+        'flex items-center gap-2',
+        !sidebarCollapsed && 'w-full justify-between'
+      )}
+    >
+      <div className="flex items-center gap-2">
+        {/* Botões de Controle de Janela (Fechar, Minimizar, Maximizar) no canto superior esquerdo */}
+        <div className="group/lights flex items-center gap-1.5 mr-1">
+          <button
+            type="button"
+            onClick={() => void handleWindowAction('close')}
+            title="Fechar janela"
+            style={{ cursor: 'pointer' }}
+            className="flex size-3 items-center justify-center rounded-full bg-[#ff5f57] border border-black/15 text-black/75 transition-transform active:scale-90 cursor-pointer"
+          >
+            <X className="size-2 opacity-0 group-hover/lights:opacity-100 stroke-[2.5]" />
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleWindowAction('minimize')}
+            title="Minimizar janela"
+            style={{ cursor: 'pointer' }}
+            className="flex size-3 items-center justify-center rounded-full bg-[#febc2e] border border-black/15 text-black/75 transition-transform active:scale-90 cursor-pointer"
+          >
+            <Minus className="size-2 opacity-0 group-hover/lights:opacity-100 stroke-[2.5]" />
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleWindowAction('maximize')}
+            title="Maximizar / Tela Cheia"
+            style={{ cursor: 'pointer' }}
+            className="flex size-3 items-center justify-center rounded-full bg-[#28c840] border border-black/15 text-black/75 transition-transform active:scale-90 cursor-pointer"
+          >
+            <Maximize2 className="size-1.5 opacity-0 group-hover/lights:opacity-100 stroke-[2.5]" />
+          </button>
+        </div>
+
+        {/* Botão Retrátil da Primeira Coluna */}
         <button
           type="button"
-          onClick={() => void handleWindowAction('close')}
-          title="Fechar janela"
-          className="flex size-3 items-center justify-center rounded-full bg-[#ff5f57] border border-black/15 text-black/75 transition-transform active:scale-90 cursor-pointer"
+          onClick={onToggleSidebar}
+          title={sidebarCollapsed ? 'Mostrar barra lateral' : 'Ocultar barra lateral'}
+          style={{ cursor: 'pointer' }}
+          className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
         >
-          <X className="size-2 opacity-0 group-hover/lights:opacity-100 stroke-[2.5]" />
-        </button>
-        <button
-          type="button"
-          onClick={() => void handleWindowAction('minimize')}
-          title="Minimizar janela"
-          className="flex size-3 items-center justify-center rounded-full bg-[#febc2e] border border-black/15 text-black/75 transition-transform active:scale-90 cursor-pointer"
-        >
-          <Minus className="size-2 opacity-0 group-hover/lights:opacity-100 stroke-[2.5]" />
-        </button>
-        <button
-          type="button"
-          onClick={() => void handleWindowAction('maximize')}
-          title="Maximizar / Tela Cheia"
-          className="flex size-3 items-center justify-center rounded-full bg-[#28c840] border border-black/15 text-black/75 transition-transform active:scale-90 cursor-pointer"
-        >
-          <Maximize2 className="size-1.5 opacity-0 group-hover/lights:opacity-100 stroke-[2.5]" />
+          <PanelLeft className="size-4" />
         </button>
       </div>
 
-      {/* Botão Retrátil da Primeira Coluna */}
-      <button
-        type="button"
-        onClick={onToggleSidebar}
-        title={sidebarCollapsed ? 'Mostrar barra lateral' : 'Ocultar barra lateral'}
-        className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
-      >
-        <PanelLeft className="size-4" />
-      </button>
-
-      {/* Label Clicável da Versão do Aplicativo ao lado do botão de expandir/recolher */}
+      {/* Pill Clicável da Versão do Aplicativo no lado oposto ao botão de recolher a primeira coluna */}
       {onOpenVersionModal && (
         <button
           type="button"
           onClick={onOpenVersionModal}
+          style={{ cursor: 'pointer' }}
           title={`Versão v${APP_VERSION} — Clique para ver as novidades e o repositório`}
-          className="inline-flex items-center rounded-md border border-border/70 bg-accent/45 px-1.5 py-0.5 text-[10.5px] font-semibold font-mono text-muted-foreground hover:border-primary/50 hover:bg-primary/15 hover:text-primary transition-colors cursor-pointer"
+          className={cn(
+            'inline-flex items-center rounded-md border border-border/70 bg-accent/45 px-2 py-0.5 text-[10.5px] font-semibold font-mono text-muted-foreground hover:border-primary/50 hover:bg-primary/15 hover:text-primary transition-colors cursor-pointer shrink-0',
+            !sidebarCollapsed && 'ml-auto'
+          )}
         >
-          v{APP_VERSION}
+          <span style={{ cursor: 'pointer' }}>v{APP_VERSION}</span>
         </button>
       )}
     </div>
@@ -733,16 +772,11 @@ export function AppleSidebar({
                       : 'Atualizar Rys MD'}
               </span>
             </span>
-            <span
-              className={cn(
-                'rounded px-1.5 py-0.5 text-[10px] font-mono shrink-0',
-                updateInfo?.hasUpdate
-                  ? 'bg-black/20 text-primary-foreground'
-                  : 'bg-background/60 text-muted-foreground'
-              )}
-            >
-              {updateInfo?.hasUpdate ? 'NOVO' : `v${APP_VERSION}`}
-            </span>
+            {updateInfo?.hasUpdate && (
+              <span className="rounded px-1.5 py-0.5 text-[10px] font-mono shrink-0 bg-black/20 text-primary-foreground">
+                NOVO
+              </span>
+            )}
           </button>
         </div>
 

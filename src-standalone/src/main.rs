@@ -932,7 +932,7 @@ Gtk.main()
             let current_version = body
                 .get("currentVersion")
                 .and_then(|v| v.as_str())
-                .unwrap_or("0.9.2");
+                .unwrap_or("0.9.3");
             let check_script = r#"
 import sys, json, urllib.request
 

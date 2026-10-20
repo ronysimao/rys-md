@@ -832,7 +832,6 @@ except Exception:
 
 #[tauri::command]
 fn window_action(window: tauri::Window, action: String) -> Result<serde_json::Value, String> {
-    use tauri::runtime::ResizeDirection;
     match action.as_str() {
         "minimize" => {
             let _ = window.minimize();
@@ -849,30 +848,6 @@ fn window_action(window: tauri::Window, action: String) -> Result<serde_json::Va
         }
         "drag" => {
             let _ = window.start_dragging();
-        }
-        "resize-n" => {
-            let _ = window.start_resize_dragging(ResizeDirection::North);
-        }
-        "resize-s" => {
-            let _ = window.start_resize_dragging(ResizeDirection::South);
-        }
-        "resize-w" => {
-            let _ = window.start_resize_dragging(ResizeDirection::West);
-        }
-        "resize-e" => {
-            let _ = window.start_resize_dragging(ResizeDirection::East);
-        }
-        "resize-nw" => {
-            let _ = window.start_resize_dragging(ResizeDirection::NorthWest);
-        }
-        "resize-ne" => {
-            let _ = window.start_resize_dragging(ResizeDirection::NorthEast);
-        }
-        "resize-sw" => {
-            let _ = window.start_resize_dragging(ResizeDirection::SouthWest);
-        }
-        "resize-se" => {
-            let _ = window.start_resize_dragging(ResizeDirection::SouthEast);
         }
         _ => {}
     }
@@ -1055,21 +1030,34 @@ fn perform_update(
 ) -> Result<serde_json::Value, String> {
     #[cfg(target_os = "macos")]
     {
-        let script = r#"#!/bin/bash
+        let explicit_url = download_url
+            .filter(|u| u.ends_with(".app.tar.gz"))
+            .unwrap_or_default();
+        let script = format!(
+            r#"#!/bin/bash
 set -e
-TAR_URL="https://github.com/ronysimao/rys-md/releases/latest/download/Rys-MD_macOS_Universal.app.tar.gz"
+TAR_URL="{explicit_url}"
+if [ -z "$TAR_URL" ]; then
+  TAR_URL="$(curl -fsSL "https://api.github.com/repos/ronysimao/rys-md/releases?per_page=5" | grep -oE 'https://github\.com/ronysimao/rys-md/releases/download/[^"]+/Rys-MD_macOS_Universal\.app\.tar\.gz' | head -n 1 || true)"
+fi
+if [ -z "$TAR_URL" ]; then
+  TAR_URL="https://github.com/ronysimao/rys-md/releases/latest/download/Rys-MD_macOS_Universal.app.tar.gz"
+fi
 TMP_DIR="$(mktemp -d)"
-curl -fsSL "$TAR_URL" -o "$TMP_DIR/rys-md.app.tar.gz"
+curl -fL "$TAR_URL" -o "$TMP_DIR/rys-md.app.tar.gz"
 tar -xzf "$TMP_DIR/rys-md.app.tar.gz" -C "$TMP_DIR"
-rm -rf "/Applications/Rys MD.app"
-mv "$TMP_DIR/Rys MD.app" "/Applications/Rys MD.app"
-xattr -cr "/Applications/Rys MD.app" || true
-codesign --force --deep --sign - "/Applications/Rys MD.app" || true
-rm -rf "$TMP_DIR"
-killall "rys-md" "Rys MD" 2>/dev/null || true
-sleep 0.5
-open "/Applications/Rys MD.app"
-"#;
+if [ -d "$TMP_DIR/Rys MD.app" ]; then
+  killall "rys-md" "Rys MD" 2>/dev/null || true
+  sleep 0.5
+  rm -rf "/Applications/Rys MD.app"
+  mv "$TMP_DIR/Rys MD.app" "/Applications/Rys MD.app"
+  xattr -cr "/Applications/Rys MD.app" || true
+  codesign --force --deep --sign - "/Applications/Rys MD.app" || true
+  rm -rf "$TMP_DIR"
+  open "/Applications/Rys MD.app"
+fi
+"#
+        );
         let script_path = std::env::temp_dir().join("rys-md-macos-updater.sh");
         let _ = fs::write(&script_path, script);
         let _ = Command::new("/bin/bash").arg(&script_path).spawn();
@@ -1082,11 +1070,13 @@ open "/Applications/Rys MD.app"
             .map(|p| p.to_string_lossy().to_string())
             .unwrap_or_default();
         let pid = std::process::id();
-        let url = download_url.unwrap_or_else(|| {
-            "https://github.com/ronysimao/rys-md/releases/latest/download/Rys-MD_Windows_x64_Portable.exe".to_string()
-        });
+        let url = download_url
+            .filter(|u| u.to_lowercase().ends_with(".exe"))
+            .unwrap_or_else(|| {
+                "https://github.com/ronysimao/rys-md/releases/latest/download/Rys-MD_Windows_x64_Portable.exe".to_string()
+            });
         let ps_updater = format!(
-            "Start-Sleep -Milliseconds 300; $tmp = Join-Path $env:TEMP 'Rys-MD-Update-Portable.exe'; Invoke-WebRequest -Uri '{url}' -OutFile $tmp -UseBasicParsing; Unblock-File -Path $tmp -ErrorAction SilentlyContinue; Stop-Process -Id {pid} -Force -ErrorAction SilentlyContinue; Start-Sleep -Milliseconds 700; Copy-Item -Path $tmp -Destination '{current_exe}' -Force; Unblock-File -Path '{current_exe}' -ErrorAction SilentlyContinue; Start-Process -FilePath '{current_exe}'"
+            "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Start-Sleep -Milliseconds 300; $tmp = Join-Path $env:TEMP 'Rys-MD-Update-Portable.exe'; Remove-Item -Path $tmp -Force -ErrorAction SilentlyContinue; & curl.exe -fL '{url}' -o $tmp 2>$null; if (-not (Test-Path $tmp) -or ((Get-Item $tmp).Length -lt 1000000)) {{ Invoke-WebRequest -Uri '{url}' -OutFile $tmp -UseBasicParsing -ErrorAction SilentlyContinue }}; if ((Test-Path $tmp) -and ((Get-Item $tmp).Length -gt 1000000)) {{ Unblock-File -Path $tmp -ErrorAction SilentlyContinue; Stop-Process -Id {pid} -Force -ErrorAction SilentlyContinue; Start-Sleep -Milliseconds 800; Copy-Item -Path $tmp -Destination '{current_exe}' -Force; Unblock-File -Path '{current_exe}' -ErrorAction SilentlyContinue; Start-Process -FilePath '{current_exe}' }}"
         );
         let _ = Command::new("powershell")
             .args([

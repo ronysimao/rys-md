@@ -159,10 +159,36 @@ export const vaultClient = {
         currentVersion
       })
     } catch {
-      // Fallback to direct GitHub API fetch
+      // Fallback to direct GitHub API fetch (OS-aware binary asset resolution)
       try {
+        const ua =
+          typeof navigator !== 'undefined' ? navigator.userAgent || '' : ''
+        const isWin = /Windows/i.test(ua)
+        const isMac = /Macintosh|Mac OS X/i.test(ua)
+
+        const pickOsAsset = (
+          assets?: Array<{ name?: string; browser_download_url?: string }>
+        ) => {
+          if (!assets || assets.length === 0) return undefined
+          if (isWin) {
+            return (
+              assets.find((a) =>
+                a.name?.endsWith('Windows_x64_Portable.exe')
+              ) || assets.find((a) => a.name?.endsWith('.exe'))
+            )
+          }
+          if (isMac) {
+            return (
+              assets.find(
+                (a) => a.name === 'Rys-MD_macOS_Universal.app.tar.gz'
+              ) || assets.find((a) => a.name?.endsWith('.app.tar.gz'))
+            )
+          }
+          return assets.find((a) => a.name?.endsWith('.deb'))
+        }
+
         const res = await fetch(
-          'https://api.github.com/repos/ronysimao/rys-md/releases/latest',
+          'https://api.github.com/repos/ronysimao/rys-md/releases?per_page=5',
           { headers: { Accept: 'application/vnd.github+json' } }
         )
         if (!res.ok) {
@@ -172,20 +198,39 @@ export const vaultClient = {
             releaseUrl: 'https://github.com/ronysimao/rys-md/releases'
           }
         }
-        const data = (await res.json()) as {
+        const releases = (await res.json()) as Array<{
           tag_name?: string
           html_url?: string
           assets?: Array<{ name?: string; browser_download_url?: string }>
+        }>
+
+        // Pick the newest release that already has the compiled binary for this OS
+        const matchingRelease =
+          releases.find((r) => Boolean(pickOsAsset(r.assets))) || releases[0]
+
+        if (!matchingRelease) {
+          return {
+            hasUpdate: false,
+            latestVersion: currentVersion,
+            releaseUrl: 'https://github.com/ronysimao/rys-md/releases'
+          }
         }
-        const latestVersion = (data.tag_name || currentVersion).replace(/^v/i, '')
-        const hasUpdate = isNewerSemver(latestVersion, currentVersion)
-        const debAsset = data.assets?.find((a) => a.name?.endsWith('.deb'))
+
+        const osAsset = pickOsAsset(matchingRelease.assets)
+        const latestVersion = (
+          matchingRelease.tag_name || currentVersion
+        ).replace(/^v/i, '')
+        const hasUpdate =
+          Boolean(osAsset?.browser_download_url) &&
+          isNewerSemver(latestVersion, currentVersion)
+
         return {
           hasUpdate,
           latestVersion,
           releaseUrl:
-            data.html_url || 'https://github.com/ronysimao/rys-md/releases',
-          downloadUrl: debAsset?.browser_download_url
+            matchingRelease.html_url ||
+            'https://github.com/ronysimao/rys-md/releases',
+          downloadUrl: osAsset?.browser_download_url
         }
       } catch {
         return {

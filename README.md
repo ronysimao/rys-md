@@ -120,17 +120,17 @@ curl -fsSL https://raw.githubusercontent.com/ronysimao/rys-md/main/scripts/insta
 ```
 > Esse comando baixa o binário **Universal (`x86_64` + `arm64`)**, instala em `/Applications/Rys MD.app`, remove automaticamente o atributo de quarentena do navegador (`xattr -cr`) e abre o aplicativo imediatamente!
 >
-> **Alternativa pelo navegador (`.zip` / `.dmg`)**: Baixe o arquivo `Rys-MD_0.9.2_macOS_Universal_Com_Instalador.zip` em [Releases](https://github.com/ronysimao/rys-md/releases), extraia e execute o script `Instalar Rys MD no Mac (Desbloquear Sonoma).command` (ou arraste o `Rys MD.app` para `/Applications` e rode `xattr -cr "/Applications/Rys MD.app"` no Terminal).
+> **Alternativa pelo navegador (`.zip` / `.dmg`)**: Baixe o arquivo `Rys-MD_0.9.3_macOS_Universal_Com_Instalador.zip` em [Releases](https://github.com/ronysimao/rys-md/releases), extraia e execute o script `Instalar Rys MD no Mac (Desbloquear Sonoma).command` (ou arraste o `Rys MD.app` para `/Applications` e rode `xattr -cr "/Applications/Rys MD.app"` no Terminal).
 
 ### 2. 🪟 Usar no Windows — Edição PortableApps (Sem Instalador / Sem Bloqueio de Assinatura)
-1. Na página de [Releases](https://github.com/ronysimao/rys-md/releases), baixe **`Rys-MD_0.9.2_Windows_x64_Portable.zip`**.
+1. Na página de [Releases](https://github.com/ronysimao/rys-md/releases), baixe **`Rys-MD_0.9.3_Windows_x64_Portable.zip`**.
 2. Extraia a pasta em qualquer lugar (Área de Trabalho, Documentos, Pendrive, OneDrive ou Dropbox).
 3. Dê dois cliques em **`Iniciar Rys MD Portable (Sem Bloqueio SmartScreen).bat`** (ele remove automaticamente o bloqueio *Zone.Identifier* de arquivos baixados da internet e abre o `Rys MD Portable.exe` sem pedir senha de Administrador!).
 4. Todas as suas notas ficam salvas dentro da própria subpasta `Rys MD Vault` da versão portátil.
 
 ### 3. 🐧 Instalar o Pacote `.deb` no Ubuntu / Debian / Linux Mint
 ```bash
-sudo dpkg -i release/rys-md_0.9.2_amd64.deb
+sudo dpkg -i release/rys-md_0.9.3_amd64.deb
 ```
 Depois de instalado, basta abrir **Rys MD** pelo menu de aplicativos do sistema ou executar `rys-md` no terminal.
 
@@ -149,7 +149,7 @@ bun run dev
 ```bash
 bun run build:deb
 ```
-O pacote instalável será gerado automaticamente em `release/rys-md_0.9.2_amd64.deb`.
+O pacote instalável será gerado automaticamente em `release/rys-md_0.9.3_amd64.deb`.
 
 ---
 
