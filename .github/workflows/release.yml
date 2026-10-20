@@ -73,24 +73,33 @@ jobs:
           VER="${{ steps.ver.outputs.version }}"
           bun run tauri:build
 
-          # Single-file Portable executables
+          # Assinatura Authenticode do fornecedor Rys Dev nos binários gerados
+          powershell -NoProfile -Command '
+            $cert = New-SelfSignedCertificate -Subject "CN=Rys Dev, O=Rys Dev" -Type CodeSigningCert -KeyUsage DigitalSignature -CertStoreLocation "Cert:\CurrentUser\My" -NotAfter (Get-Date).AddYears(5)
+            Get-ChildItem -Path "src-tauri/target/release/*.exe", "src-tauri/target/release/bundle/nsis/*.exe", "src-tauri/target/release/bundle/msi/*.msi" -ErrorAction SilentlyContinue | ForEach-Object {
+              Set-AuthenticodeSignature -FilePath $_.FullName -Certificate $cert -ErrorAction SilentlyContinue | Out-Null
+            }
+          '
+
+          # Single-file Portable executables (usados pelo Auto-Updater e pelo install-windows.ps1)
           cp src-tauri/target/release/rys-md.exe "src-tauri/target/release/Rys-MD_${VER}_Windows_x64_Portable.exe"
           cp src-tauri/target/release/rys-md.exe "src-tauri/target/release/Rys-MD_Windows_x64_Portable.exe"
 
           # Complete PortableApps Self-Contained Folder (.zip)
           PORTABLE_DIR="src-tauri/target/release/Rys-MD-Portable"
           rm -rf "$PORTABLE_DIR"
-          mkdir -p "$PORTABLE_DIR/Rys MD Vault"
-          cp src-tauri/target/release/rys-md.exe "$PORTABLE_DIR/Rys MD Portable.exe"
-          echo "Rys MD Portable Mode - Notes are saved in './Rys MD Vault'" > "$PORTABLE_DIR/portable.txt"
+          mkdir -p "$PORTABLE_DIR/app/Rys MD Vault"
+          cp src-tauri/target/release/rys-md.exe "$PORTABLE_DIR/app/Rys-MD.exe"
+          echo "Rys MD Portable Mode - Notes are saved in './Rys MD Vault'" > "$PORTABLE_DIR/app/portable.txt"
 
-          cat > "$PORTABLE_DIR/Iniciar Rys MD Portable (Sem Bloqueio SmartScreen).bat" << 'BATEOF'
+          cat > "$PORTABLE_DIR/Abrir Rys MD (Sem SmartScreen).bat" << 'BATEOF'
           @echo off
           chcp 65001 >nul
           title Rys MD Portable Launcher
-          REM Remove o bloqueio Zone.Identifier (SmartScreen) aplicado pelo navegador ao baixar da internet
-          powershell -NoProfile -ExecutionPolicy Bypass -Command "Get-ChildItem -Path '%~dp0' -Recurse | Unblock-File -ErrorAction SilentlyContinue" >nul 2>&1
-          start "" "%~dp0Rys MD Portable.exe"
+          REM Remove imediatamente a stream NTFS Zone.Identifier (SmartScreen) antes de abrir o executável
+          del /f /q "%~dp0app\Rys-MD.exe:Zone.Identifier" >nul 2>&1
+          powershell -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -Command "Get-ChildItem -Path '%~dp0' -Recurse | Unblock-File -ErrorAction SilentlyContinue" >nul 2>&1
+          start "" "%~dp0app\Rys-MD.exe"
           BATEOF
 
           cat > "$PORTABLE_DIR/LEIA-ME (Windows Portable).txt" << 'TXTEOF'
@@ -99,22 +108,17 @@ jobs:
             Site: https://md.rysdev.com
           ==================================================================
 
-          COMO USAR (SEM INSTALAÇÃO E SEM PROBLEMAS DE ASSINATURA):
+          OPÇÃO A — INSTALAÇÃO DIRETA EM 1 COMANDO NO POWERSHELL (SEM SMARTSCREEN):
+          Abra o PowerShell do Windows, cole o comando abaixo e aperte Enter:
+          irm https://raw.githubusercontent.com/ronysimao/rys-md/main/scripts/install-windows.ps1 | iex
+
+          OPÇÃO B — USANDO ESTA PASTA PORTABLE (.ZIP):
           1. Extraia toda esta pasta para qualquer local (Área de Trabalho,
              Documentos, Pendrive, OneDrive ou Dropbox).
-          2. Na primeira vez, dê dois cliques em:
-             "Iniciar Rys MD Portable (Sem Bloqueio SmartScreen).bat"
-             (Ele desbloqueia automaticamente o executável baixado da internet
-             e abre o Rys MD sem pedir senha de Administrador).
-          3. Nas próximas vezes, você pode abrir diretamente pelo
-             "Rys MD Portable.exe" ou pelo ".bat".
-
-          ONDE MINHAS NOTAS FICAM SALVAS NO MODO PORTABLE?
-          - Por padrão nesta edição Portable, todas as suas notas (.md) ficam
-            salvas dentro da subpasta "Rys MD Vault" ao lado do executável!
-          - Se preferir usar a pasta Documentos\RYS MD do Windows, basta apagar
-            o arquivo "portable.txt" e a pasta "Rys MD Vault", ou alterar a
-            pasta diretamente no rodapé do aplicativo.
+          2. Dê dois cliques em:
+             "Abrir Rys MD (Sem SmartScreen).bat"
+             (Ele remove automaticamente o marcador Zone.Identifier do navegador
+             e abre o Rys MD sem nenhum aviso do Windows Defender SmartScreen).
           TXTEOF
 
           powershell -NoProfile -Command "Compress-Archive -Path '$PORTABLE_DIR/*' -DestinationPath 'src-tauri/target/release/Rys-MD_${VER}_Windows_x64_Portable.zip' -Force"

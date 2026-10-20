@@ -188,14 +188,59 @@ label,
 [role='button'],
 [role='button'] *,
 [role='option'],
+[role='option'] *,
 [role='tab'],
+[role='tab'] *,
 [role='menuitem'],
+[role='menuitem'] *,
 input[type='checkbox'],
 input[type='radio'],
 input[type='file'],
 .cursor-pointer,
-.cursor-pointer * {
+.cursor-pointer *,
+.rys-inline-tag,
+.rich-markdown-toolbar-button,
+.rich-markdown-toolbar-button *,
+.rich-markdown-slash-item,
+.rich-markdown-slash-item *,
+.code-block-copy-btn,
+.code-block-copy-btn *,
+.rich-markdown-code-block-lang {
   cursor: pointer !important;
+}
+
+:root[data-platform='windows'] button,
+:root[data-platform='windows'] button *,
+:root[data-platform='windows'] a,
+:root[data-platform='windows'] a *,
+:root[data-platform='windows'] select,
+:root[data-platform='windows'] summary,
+:root[data-platform='windows'] label,
+:root[data-platform='windows'] [role='button'],
+:root[data-platform='windows'] [role='button'] *,
+:root[data-platform='windows'] [role='option'],
+:root[data-platform='windows'] [role='option'] *,
+:root[data-platform='windows'] [role='tab'],
+:root[data-platform='windows'] [role='tab'] *,
+:root[data-platform='windows'] [role='menuitem'],
+:root[data-platform='windows'] [role='menuitem'] *,
+:root[data-platform='windows'] input[type='checkbox'],
+:root[data-platform='windows'] input[type='radio'],
+:root[data-platform='windows'] input[type='file'],
+:root[data-platform='windows'] .cursor-pointer,
+:root[data-platform='windows'] .cursor-pointer *,
+:root[data-platform='windows'] .rys-inline-tag,
+:root[data-platform='windows'] .rich-markdown-toolbar-button,
+:root[data-platform='windows'] .rich-markdown-toolbar-button *,
+:root[data-platform='windows'] .rich-markdown-slash-item,
+:root[data-platform='windows'] .rich-markdown-slash-item *,
+:root[data-platform='windows'] .code-block-copy-btn,
+:root[data-platform='windows'] .code-block-copy-btn *,
+:root[data-platform='windows'] .rich-markdown-code-block-lang {
+  cursor:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='%23FFFFFF' stroke='%23000000' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' d='M9 11V4.5a1.5 1.5 0 0 1 3 0V10h1V6.5a1.5 1.5 0 0 1 3 0V10h1V7.5a1.5 1.5 0 0 1 3 0V15a6 6 0 0 1-6 6h-2a6 6 0 0 1-5.2-3l-2.5-4.3a1.5 1.5 0 0 1 2.6-1.5L9 14v-3Z'/%3E%3C/svg%3E")
+      10 2,
+    pointer !important;
 }
 
 .bg-primary {

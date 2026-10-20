@@ -855,6 +855,26 @@ fn window_action(window: tauri::Window, action: String) -> Result<serde_json::Va
 }
 
 #[tauri::command]
+fn set_window_cursor(window: tauri::Window, cursor: String) -> Result<serde_json::Value, String> {
+    use tauri::CursorIcon;
+    let icon = match cursor.as_str() {
+        "pointer" | "hand" => CursorIcon::Hand,
+        "text" => CursorIcon::Text,
+        "ew-resize" | "col-resize" => CursorIcon::EwResize,
+        "ns-resize" | "row-resize" => CursorIcon::NsResize,
+        "nwse-resize" => CursorIcon::NwseResize,
+        "nesw-resize" => CursorIcon::NeswResize,
+        "grab" => CursorIcon::Grab,
+        "grabbing" => CursorIcon::Grabbing,
+        "move" => CursorIcon::Move,
+        "not-allowed" => CursorIcon::NotAllowed,
+        _ => CursorIcon::Default,
+    };
+    let _ = window.set_cursor_icon(icon);
+    Ok(serde_json::json!({ "ok": true }))
+}
+
+#[tauri::command]
 fn open_external_url(url: String) -> Result<serde_json::Value, String> {
     #[cfg(target_os = "windows")]
     let _ = Command::new("cmd").args(["/C", "start", "", &url]).spawn();
@@ -1156,7 +1176,8 @@ fn main() {
             perform_update,
             open_external_url,
             open_os_emoji,
-            window_action
+            window_action,
+            set_window_cursor
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

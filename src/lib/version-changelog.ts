@@ -1,4 +1,4 @@
-export const APP_VERSION = '0.9.3'
+export const APP_VERSION = '0.9.4'
 export const APP_REPO_URL = 'https://github.com/ronysimao/rys-md'
 export const APP_RELEASES_URL = 'https://github.com/ronysimao/rys-md/releases'
 export const APP_SITE_URL = 'https://md.rysdev.com'
@@ -11,6 +11,15 @@ export interface VersionReleaseEntry {
 }
 
 export const VERSION_CHANGELOG: VersionReleaseEntry[] = [
+  {
+    version: '0.9.4',
+    date: 'Outubro 2026',
+    title: 'Cursor Pointer Nativo (Win32 SetCursor + SVG Fallback) no Windows 10/11 & Instalador Sem SmartScreen',
+    highlights: [
+      'Sincronização nativa do cursor ("mãozinha" / IDC_HAND) diretamente com o gerenciador de janelas Win32/Tauri (CursorIcon::Hand) + fallback SVG de alta definição para WebView2 no Windows 10/11.',
+      'Novo instalador de 1 linha no PowerShell para Windows (scripts/install-windows.ps1) e pacote Portable que removem automaticamente a stream NTFS Zone.Identifier antes da execução, eliminando o bloqueio do Windows Defender SmartScreen.'
+    ]
+  },
   {
     version: '0.9.3',
     date: 'Outubro 2026',

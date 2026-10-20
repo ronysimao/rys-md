@@ -162,6 +162,73 @@ export function App(): React.JSX.Element {
     document.documentElement.dataset.accent = accentColor
   }, [accentColor])
 
+  // Detect OS platform for CSS cursor fallback and sync native Win32/Tauri cursor icon on hover
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof navigator === 'undefined') return
+    const ua = navigator.userAgent || ''
+    const isWin = /Windows/i.test(ua)
+    const isMac = /Macintosh|Mac OS X/i.test(ua)
+    document.documentElement.dataset.platform = isWin
+      ? 'windows'
+      : isMac
+        ? 'macos'
+        : 'linux'
+
+    const isTauri = Boolean(
+      (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__
+    )
+    if (!isTauri) return
+
+    let lastCursor = ''
+    const resolveCursor = (el: HTMLElement | null): string => {
+      if (!el) return 'default'
+      if (el.closest('.rys-edge-nw, .rys-edge-se')) return 'nwse-resize'
+      if (el.closest('.rys-edge-ne, .rys-edge-sw')) return 'nesw-resize'
+      if (el.closest('.rys-edge-n, .rys-edge-s')) return 'ns-resize'
+      if (
+        el.closest(
+          '.rys-edge-w, .rys-edge-e, .rys-column-resizer, .cursor-ew-resize, [role="separator"][aria-orientation="vertical"]'
+        )
+      ) {
+        return 'ew-resize'
+      }
+      const clickable = el.closest(
+        'button, a, select, summary, label, [role="button"], [role="option"], [role="tab"], [role="menuitem"], input[type="checkbox"], input[type="radio"], input[type="file"], .cursor-pointer, .rys-inline-tag, .rich-markdown-toolbar-button, .rich-markdown-slash-item, .code-block-copy-btn, .rich-markdown-code-block-lang'
+      ) as HTMLElement | null
+      if (clickable) {
+        if ((clickable as HTMLButtonElement).disabled) return 'default'
+        return 'pointer'
+      }
+      if (
+        el.closest(
+          'input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), textarea, [contenteditable="true"], .ProseMirror, .cm-content'
+        )
+      ) {
+        return 'text'
+      }
+      return 'default'
+    }
+
+    const applyCursor = (next: string) => {
+      if (next === lastCursor) return
+      lastCursor = next
+      void import('@tauri-apps/api/core')
+        .then(({ invoke }) => invoke('set_window_cursor', { cursor: next }))
+        .catch(() => {})
+    }
+
+    const onPointerEvent = (e: MouseEvent) => {
+      applyCursor(resolveCursor(e.target as HTMLElement | null))
+    }
+
+    window.addEventListener('pointerover', onPointerEvent, { passive: true, capture: true })
+    window.addEventListener('mousemove', onPointerEvent, { passive: true })
+    return () => {
+      window.removeEventListener('pointerover', onPointerEvent, { capture: true })
+      window.removeEventListener('mousemove', onPointerEvent)
+    }
+  }, [])
+
   useEffect(() => {
     localStorage.setItem(STORAGE_FILTER_KEY, JSON.stringify(activeFilter))
   }, [activeFilter])

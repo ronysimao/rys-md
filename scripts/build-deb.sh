@@ -6,7 +6,7 @@ export PATH="$HOME/.cargo/bin:$PATH"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
-VERSION="$(node -p "require('./package.json').version" 2>/dev/null || echo "0.9.3")"
+VERSION="$(node -p "require('./package.json').version" 2>/dev/null || echo "0.9.4")"
 ARCH="amd64"
 PKG_NAME="rys-md"
 DEB_DIR="$ROOT_DIR/release/${PKG_NAME}_${VERSION}_${ARCH}"
