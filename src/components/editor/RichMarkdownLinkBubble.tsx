@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import type { Editor } from '@tiptap/react'
-import { Copy, ExternalLink, Pencil, Trash2, Check, X } from 'lucide-react'
+import { Copy, ExternalLink, Pencil, Unlink, Check, X } from 'lucide-react'
 
 export type LinkBubbleState = {
   href: string
@@ -145,7 +145,7 @@ export function RichMarkdownLinkBubble({
             onClick={onRemove}
             className="rich-markdown-link-button cursor-pointer text-red-400"
           >
-            <Trash2 size={14} />
+            <Unlink size={14} />
           </button>
         </>
       )}

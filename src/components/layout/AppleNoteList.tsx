@@ -106,90 +106,87 @@ export function AppleNoteList({
           >
             {note.title}
           </h3>
-          <div className="flex items-center gap-1 shrink-0">
-            {note.pinned && !note.trashed && (
-              <Pin
-                className={cn(
-                  'size-3',
-                  isSelected
-                    ? 'text-primary-foreground fill-primary-foreground'
-                    : 'text-primary fill-primary'
-                )}
-              />
+          <div className="flex items-center gap-0.5 shrink-0">
+            {note.trashed ? (
+              <div className="hidden group-hover:flex items-center gap-0.5">
+                <button
+                  type="button"
+                  title="Restaurar nota"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onRestoreNote(note.relativePath)
+                  }}
+                  className={cn(
+                    'rounded p-1 cursor-pointer',
+                    isSelected
+                      ? 'hover:bg-black/15 text-primary-foreground'
+                      : 'hover:bg-background/80 text-emerald-500'
+                  )}
+                >
+                  <RotateCcw className="size-3" />
+                </button>
+                <button
+                  type="button"
+                  title="Excluir permanentemente"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onTrashNote(note.relativePath)
+                  }}
+                  className={cn(
+                    'rounded p-1 cursor-pointer',
+                    isSelected
+                      ? 'hover:bg-black/15 text-primary-foreground'
+                      : 'hover:bg-background/80 text-red-400'
+                  )}
+                >
+                  <Trash2 className="size-3" />
+                </button>
+              </div>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  title={note.pinned ? 'Desafixar nota' : 'Fixar no topo'}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onTogglePin(note.relativePath)
+                  }}
+                  className={cn(
+                    'rounded p-1 cursor-pointer items-center justify-center transition-colors',
+                    note.pinned ? 'inline-flex' : 'hidden group-hover:inline-flex',
+                    isSelected
+                      ? 'hover:bg-black/15 text-primary-foreground'
+                      : 'hover:bg-background/80 text-primary'
+                  )}
+                >
+                  <Pin
+                    className={cn(
+                      'size-3',
+                      note.pinned &&
+                        (isSelected
+                          ? 'fill-primary-foreground'
+                          : 'fill-primary')
+                    )}
+                  />
+                </button>
+                <button
+                  type="button"
+                  title="Mover para a Lixeira"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onTrashNote(note.relativePath)
+                  }}
+                  className={cn(
+                    'hidden group-hover:inline-flex items-center justify-center rounded p-1 cursor-pointer transition-colors',
+                    isSelected
+                      ? 'hover:bg-black/15 text-primary-foreground'
+                      : 'hover:bg-background/80 text-muted-foreground hover:text-red-400'
+                  )}
+                >
+                  <Trash2 className="size-3" />
+                </button>
+              </>
             )}
-            <div className="hidden group-hover:flex items-center gap-0.5">
-              {note.trashed ? (
-                <>
-                  <button
-                    type="button"
-                    title="Restaurar nota"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onRestoreNote(note.relativePath)
-                    }}
-                    className={cn(
-                      'rounded p-1 cursor-pointer',
-                      isSelected
-                        ? 'hover:bg-black/15 text-primary-foreground'
-                        : 'hover:bg-background/80 text-emerald-500'
-                    )}
-                  >
-                    <RotateCcw className="size-3" />
-                  </button>
-                  <button
-                    type="button"
-                    title="Excluir permanentemente"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onTrashNote(note.relativePath)
-                    }}
-                    className={cn(
-                      'rounded p-1 cursor-pointer',
-                      isSelected
-                        ? 'hover:bg-black/15 text-primary-foreground'
-                        : 'hover:bg-background/80 text-red-400'
-                    )}
-                  >
-                    <Trash2 className="size-3" />
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    title={note.pinned ? 'Desafixar nota' : 'Fixar no topo'}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onTogglePin(note.relativePath)
-                    }}
-                    className={cn(
-                      'rounded p-1 cursor-pointer',
-                      isSelected
-                        ? 'hover:bg-black/15 text-primary-foreground'
-                        : 'hover:bg-background/80 text-primary'
-                    )}
-                  >
-                    <Pin className="size-3" />
-                  </button>
-                  <button
-                    type="button"
-                    title="Mover para a Lixeira"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onTrashNote(note.relativePath)
-                    }}
-                    className={cn(
-                      'rounded p-1 cursor-pointer',
-                      isSelected
-                        ? 'hover:bg-black/15 text-primary-foreground'
-                        : 'hover:bg-background/80 text-muted-foreground hover:text-red-400'
-                    )}
-                  >
-                    <Trash2 className="size-3" />
-                  </button>
-                </>
-              )}
-            </div>
           </div>
         </div>
 

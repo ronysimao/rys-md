@@ -1,4 +1,4 @@
-export const APP_VERSION = '0.9.6'
+export const APP_VERSION = '0.9.7'
 export const APP_REPO_URL = 'https://github.com/ronysimao/rys-md'
 export const APP_RELEASES_URL = 'https://github.com/ronysimao/rys-md/releases'
 export const APP_SITE_URL = 'https://md.rysdev.com'
@@ -11,6 +11,15 @@ export interface VersionReleaseEntry {
 }
 
 export const VERSION_CHANGELOG: VersionReleaseEntry[] = [
+  {
+    version: '0.9.7',
+    date: 'Outubro 2026',
+    title: 'Pino Único Inteligente na Lista de Notas & Ícone Unlink no Menu de Links',
+    highlights: [
+      'Unificação do botão de fixar nota (📌) na 2ª coluna: notas não fixadas exibem o pino vazado no hover; ao fixar, o mesmo pino fica preenchido e permanentemente visível, voltando a ficar vazado (apenas no hover) ao clicar novamente.',
+      'Substituição do ícone de lixeira pelo ícone Unlink (elo/cadeado quebrado ao meio) no botão "Remover link" do menu suspenso de links.'
+    ]
+  },
   {
     version: '0.9.6',
     date: 'Outubro 2026',
